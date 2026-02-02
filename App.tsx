@@ -36,6 +36,7 @@ const AppContent: React.FC = () => {
 
   // Wagmi Hook
   const { address: web3Address, isConnected: isWeb3Connected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
   const t = translations[lang];
 
@@ -51,6 +52,14 @@ const AppContent: React.FC = () => {
     // Initial Lottery Check (Lazy Trigger)
     lotteryService.checkAndRunDraws().catch(console.error);
 
+    // Check Session & Restore User
+    const session = authService.getSession();
+    if (session) {
+      dbService.getUser(session.address).then(u => {
+        if (u) setUser(u);
+      });
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
     if (ref && ref.length === 6) {
@@ -60,9 +69,25 @@ const AppContent: React.FC = () => {
 
   // Sync Web3 Auth
   useEffect(() => {
-    if (web3Address && !user) {
-      connectWallet(web3Address);
-    }
+    const handleAuth = async () => {
+      // If wallet connected but user not logged in OR address mismatch
+      if (web3Address) {
+        const session = authService.getSession();
+        if (session && session.address === web3Address) {
+          // Already authenticated locally, ensure user loaded
+          if (!user) {
+            const u = await dbService.getUser(web3Address);
+            if (u) setUser(u);
+          }
+          return;
+        }
+        // Not authenticated (no session) or wallet changed
+        if (!user || user.walletAddress !== web3Address) {
+          connectWallet(web3Address);
+        }
+      }
+    };
+    handleAuth();
   }, [web3Address, user]);
 
   const calculateLevel = (points: number) => {
@@ -94,25 +119,35 @@ const AppContent: React.FC = () => {
     setIsConnecting(true);
 
     try {
-      // Priority: Wagmi address > Backpack > window.solana
       let address = forcedAddress;
 
+      // Fallback if not driven by wagmi hook (e.g. initial button click)
       if (!address) {
-        const provider = (window as any).backpack || (window as any).solana;
-        if (provider) {
-          const resp = await provider.connect();
-          address = resp.publicKey?.toString() || resp.address;
-        }
-      }
-
-      if (!address) {
-        // If not connected via Wagmi and no Solana wallet, prompt
-        // For now, let RainbowKit handle the UI if used inside Navbar
+        // Assuming button click triggered wallet connect via Wagmi UI externally
+        // So we just return and let useEffect catch the address change
         setIsConnecting(false);
         return;
       }
 
-      // Step 3: Fetch Profile from DB
+      // SIGNATURE AUTHENTICATION
+      // Check if we already have a valid session for this address
+      const validSession = authService.getSession();
+
+      if (!validSession || validSession.address !== address) {
+        const timestamp = Date.now();
+        const msg = `Sign to authenticate with CARVFi\nWallet: ${address}\nTimestamp: ${timestamp}`;
+
+        try {
+          const signature = await signMessageAsync({ message: msg });
+          authService.login(address, signature);
+        } catch (e) {
+          console.warn("User reject sig", e);
+          setIsConnecting(false);
+          return;
+        }
+      }
+
+      // Step 3: Fetch/Create Profile from DB
       let profile = await dbService.getUser(address);
 
       if (!profile) {
@@ -126,7 +161,7 @@ const AppContent: React.FC = () => {
           streak: 0,
           level: 1,
           lastCheckIn: null,
-          tasksCompleted: [], // Unused for logic but kept for type compat
+          tasksCompleted: [],
           referralCode: generateRefCode(),
           referralsCount: 0,
           isNewUser: true
@@ -169,7 +204,7 @@ const AppContent: React.FC = () => {
           <div className="space-y-6 relative z-10">
             {/* Custom Connect Button logic handled by Navbar or direct Wagmi usage */}
             <button
-              onClick={() => connectWallet()}
+              onClick={() => connectWallet(web3Address)}
               disabled={isConnecting}
               className="w-full gradient-bg py-7 rounded-[30px] font-black text-2xl hover:scale-[1.05] active:scale-95 transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 group disabled:opacity-50"
             >
@@ -189,7 +224,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col relative z-10">
-      <Navbar lang={lang} setLang={setLang} user={user} onConnect={() => connectWallet()} t={t} onOpenPremium={() => setShowPremiumModal(true)} />
+      <Navbar lang={lang} setLang={setLang} user={user} onConnect={() => connectWallet(web3Address)} t={t} onOpenPremium={() => setShowPremiumModal(true)} />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700 pb-32">
         {activeTab === 'tasks' && (
           <Dashboard
