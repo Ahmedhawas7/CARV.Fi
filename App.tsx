@@ -25,7 +25,7 @@ import { config, ChainType } from './services/web3Config';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider, useWallet } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, BackpackWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -39,7 +39,6 @@ const endpoint = useMemo(() => clusterApiUrl(network), []);
 const wallets = useMemo(
   () => [
     new PhantomWalletAdapter(),
-    new BackpackWalletAdapter(),
   ],
   []
 );
