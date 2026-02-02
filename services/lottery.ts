@@ -3,7 +3,7 @@ import { dbService } from './database';
 import { User, LotteryPool, LotteryTicket } from '../types';
 
 export const LOTTERY_CONSTANTS = {
-    TICKET_PRICE: 10,
+    TICKET_PRICE: 1000,
     DAILY_LIMIT: 10,
     DISTRIBUTION: {
         DAILY_WINNERS: 0.60, // 60%
@@ -12,6 +12,7 @@ export const LOTTERY_CONSTANTS = {
     },
     DAILY_WINNER_COUNT: 5
 };
+
 
 class LotteryService {
 

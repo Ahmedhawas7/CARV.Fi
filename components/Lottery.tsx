@@ -1,161 +1,101 @@
 
 import React, { useEffect, useState } from 'react';
-import { User, LotteryPool } from '../types';
-import { lotteryService, LOTTERY_CONSTANTS } from '../services/lottery';
+import { User } from '../types'; // Keep User type for prop compatibility for now
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { LOTTERY_ABI } from '../services/abis';
+import { formatUnits, parseUnits } from 'viem';
+
+// Address would come from env in real prod
+const LOTTERY_CONTRACT = "0x1234567890123456789012345678901234567890";
+// Mock address for UI to not crash, user must deploy and update env.
 
 interface LotteryProps {
-    user: User;
+    user: User; // Legacy prop
     t: any;
     onUpdateUser: (u: User) => void;
 }
 
 const Lottery: React.FC<LotteryProps> = ({ user, t, onUpdateUser }) => {
-    const [dailyPool, setDailyPool] = useState<LotteryPool | null>(null);
-    const [jackpot, setJackpot] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [lastWinners, setLastWinners] = useState<{ wallet: string, amount: number }[]>([]);
+    const { address, isConnected } = useAccount();
+    const { writeContract, data: hash, isPending: isWritePending, error: writeError } = useWriteContract();
 
-    const today = new Date().toISOString().split('T')[0];
-    const userTicketsToday = user.lastTicketDate === today ? (user.dailyTicketCount || 0) : 0;
+    // Read Data
+    const { data: jackpotData } = useReadContract({
+        address: LOTTERY_CONTRACT,
+        abi: LOTTERY_ABI,
+        functionName: 'weeklyJackpotPool',
+        query: { enabled: isConnected } // Only fetch if connected
+    });
 
-    const refreshData = async () => {
-        // 1. Run checks
-        await lotteryService.checkAndRunDraws();
-
-        // 2. Fetch Data
-        const poolId = `daily_${today}`;
-        const pool = await lotteryService.getPool(poolId);
-        setDailyPool(pool);
-
-        const weeklyJackpot = await lotteryService.getCurrentJackpot();
-        setJackpot(weeklyJackpot);
-
-        // 3. Last Winners (Yesterday)
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const prevPoolId = `daily_${yesterday.toISOString().split('T')[0]}`;
-        const prevPool = await lotteryService.getPool(prevPoolId);
-        if (prevPool && prevPool.winners) {
-            setLastWinners(prevPool.winners);
-        }
-    };
+    // For demo purposes, we might still fallback to local state if contract read fails 
+    // (since contract isn't actually deployed on the user's localhost chain usually)
+    const [displayJackpot, setDisplayJackpot] = useState("0");
 
     useEffect(() => {
-        refreshData();
-    }, []);
-
-    const handleBuyTicket = async () => {
-        if (!confirm(`Buy Ticket for ${LOTTERY_CONSTANTS.TICKET_PRICE} GEMs?`)) return;
-
-        setLoading(true);
-        const result = await lotteryService.buyTicket(user);
-        if (result.success && result.updatedUser) {
-            onUpdateUser(result.updatedUser);
-            await refreshData(); // Refresh pool data
-            alert("🎟️ Ticket Acquired! Good luck.");
-        } else {
-            alert(result.message);
+        if (jackpotData) {
+            setDisplayJackpot(formatUnits(jackpotData as bigint, 6)); // USDC 6 decimals
         }
-        setLoading(false);
+    }, [jackpotData]);
+
+    const handleBuyTicketChain = async () => {
+        if (!isConnected) return alert("Connect Wallet!");
+
+        try {
+            writeContract({
+                address: LOTTERY_CONTRACT,
+                abi: LOTTERY_ABI,
+                functionName: 'buyTickets',
+                args: [BigInt(1)]
+            });
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     return (
         <div className="max-w-4xl mx-auto space-y-10 pb-32 animate-in fade-in">
-
             {/* Header / Jackpot */}
             <div className="text-center space-y-4">
                 <h2 className="text-6xl font-black italic uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 to-yellow-600 drop-shadow-[0_0_25px_rgba(234,179,8,0.5)]">
                     Weekly Jackpot
                 </h2>
                 <div className="text-5xl font-mono font-black text-white text-glow border-y border-white/10 py-6 bg-black/40">
-                    💎 {jackpot.toLocaleString()}
+                    💎 {displayJackpot} USDC
                 </div>
-                <p className="text-gray-400 uppercase tracking-[0.5em] text-xs font-bold">Reserves from Daily Pools</p>
+                <div className="flex justify-center gap-4 text-[10px] text-gray-500 font-mono border border-white/5 rounded-full px-4 py-1 w-fit mx-auto bg-black/20">
+                    <span>Networks: BASE</span>
+                    <span>•</span>
+                    <span>Settlement: USDC</span>
+                    <span>•</span>
+                    <span>Contract: {LOTTERY_CONTRACT.slice(0, 6)}...</span>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="glass-card p-8 rounded-[40px] text-center space-y-6">
+                <h3 className="text-3xl font-black uppercase italic">Get your Tickets</h3>
 
-                {/* Daily Draw Card */}
-                <div className="glass-card p-8 rounded-[40px] relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 text-9xl">🎰</div>
-                    <h3 className="text-3xl font-black uppercase italic mb-6">Daily Draw</h3>
-
-                    <div className="space-y-6 relative z-10">
-                        <div className="flex justify-between items-end border-b border-white/10 pb-4">
-                            <span className="text-gray-400 text-xs font-bold uppercase">Prize Pool</span>
-                            <span className="text-2xl font-mono font-bold text-primary">{dailyPool?.prizePool || 0} GEMs</span>
-                        </div>
-
-                        <div className="bg-black/40 rounded-2xl p-6 text-center space-y-2 border border-white/5">
-                            <div className="text-gray-500 text-[10px] uppercase tracking-widest">Tickets Remaining</div>
-                            <div className="text-4xl font-black text-white">{10 - userTicketsToday} <span className="text-base text-gray-600">/ 10</span></div>
-                        </div>
-
+                {!isConnected ? (
+                    <div className="p-4 bg-red-500/20 text-red-200 rounded-xl font-bold">
+                        Please Connect Wallet to Play
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <p className="text-gray-400">1 Ticket = 1000 GEMs</p>
                         <button
-                            onClick={handleBuyTicket}
-                            disabled={loading || userTicketsToday >= 10 || user.points < 10}
-                            className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-700 rounded-xl font-black uppercase text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                            onClick={handleBuyTicketChain}
+                            disabled={isWritePending}
+                            className="w-full max-w-md mx-auto py-4 bg-gradient-to-r from-green-500 to-emerald-700 rounded-xl font-black uppercase text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-[1.05] transition-all"
                         >
-                            {loading ? 'Processing...' : `Buy Ticket (10 GEMs)`}
+                            {isWritePending ? "Confirming..." : "Buy 1 Ticket On-Chain"}
                         </button>
-                        <div className="text-center text-[10px] text-gray-500 font-mono">
-                            10% Burn • 60% Winners • 30% Jackpot reserve
-                        </div>
+                        {hash && <p className="text-xs text-green-400 font-mono">Tx: {hash}</p>}
+                        {writeError && <p className="text-xs text-red-400 font-mono">{writeError.message}</p>}
                     </div>
-                </div>
+                )}
+            </div>
 
-                <div className="space-y-8">
-                    {/* Winners Feed */}
-                    <div className="glass-card p-8 rounded-[40px] flex flex-col h-[300px]">
-                        <h3 className="text-2xl font-black uppercase italic mb-6 text-gray-300">Yesterday's Winners</h3>
-                        <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-white/10 pr-2">
-                            {lastWinners.length > 0 ? lastWinners.map((w, i) => (
-                                <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center text-xs font-bold text-black border-2 border-white">
-                                            #{i + 1}
-                                        </div>
-                                        <span className="font-mono text-sm text-gray-300">{w.wallet.slice(0, 6)}...</span>
-                                    </div>
-                                    <span className="text-primary font-bold">+{w.amount}</span>
-                                </div>
-                            )) : (
-                                <div className="text-center py-10 text-gray-600 text-sm font-bold uppercase">No winners yet...</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Live Participants Feed */}
-                    <div className="glass-card p-8 rounded-[40px] flex flex-col h-[300px]">
-                        <h3 className="text-2xl font-black uppercase italic mb-6 text-gray-300">Live Entries</h3>
-                        <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-white/10 pr-2">
-                            {dailyPool && dailyPool.participants && dailyPool.participants.length > 0 ? (
-                                Object.entries(dailyPool.participants.reduce((acc, wallet) => {
-                                    acc[wallet] = (acc[wallet] || 0) + 1;
-                                    return acc;
-                                }, {} as Record<string, number>))
-                                    .sort(([, a], [, b]) => b - a)
-                                    .map(([wallet, count], i) => (
-                                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/30">
-                                                    👤
-                                                </div>
-                                                <span className="font-mono text-sm text-gray-300">{wallet.slice(0, 6)}...{wallet.slice(-4)}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-gray-500 uppercase">Tickets</span>
-                                                <span className="text-white font-bold bg-white/10 px-2 py-0.5 roundedElement">{count}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                            ) : (
-                                <div className="text-center py-10 text-gray-600 text-sm font-bold uppercase">No entries today yet...</div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
+            <div className="text-center text-gray-500 text-xs mt-10">
+                <p>Note: You must deploy the contracts to Base and update `LOTTERY_CONTRACT` in the code.</p>
             </div>
         </div>
     );

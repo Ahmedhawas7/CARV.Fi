@@ -14,7 +14,17 @@ import Store from './components/Store';
 import PremiumModal from './components/PremiumModal';
 import Lottery from './components/Lottery';
 
-const App: React.FC = () => {
+// Web3 Imports
+import '@rainbow-me/rainbowkit/styles.css';
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { WagmiProvider, useAccount, useSignMessage } from 'wagmi';
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { config } from './services/web3Config';
+import { authService } from './services/authService';
+
+const queryClient = new QueryClient();
+
+const AppContent: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile' | 'store' | 'lotto'>('tasks');
@@ -23,6 +33,9 @@ const App: React.FC = () => {
   const [refInput, setRefInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+
+  // Wagmi Hook
+  const { address: web3Address, isConnected: isWeb3Connected } = useAccount();
 
   const t = translations[lang];
 
@@ -44,6 +57,13 @@ const App: React.FC = () => {
       setRefInput(ref);
     }
   }, []);
+
+  // Sync Web3 Auth
+  useEffect(() => {
+    if (web3Address && !user) {
+      connectWallet(web3Address);
+    }
+  }, [web3Address, user]);
 
   const calculateLevel = (points: number) => {
     const lvl = Math.floor(Math.sqrt(points / 50)) + 1;
@@ -69,41 +89,27 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const connectWallet = async () => {
+  const connectWallet = async (forcedAddress?: string) => {
     if (isConnecting) return;
     setIsConnecting(true);
 
     try {
-      if (window.self !== window.top) {
-        alert(lang === 'ar' ? 'يرجى فتح الموقع في تبويب مستقل لربط المحفظة.' : 'Please open the site in a standalone tab to connect your wallet.');
+      // Priority: Wagmi address > Backpack > window.solana
+      let address = forcedAddress;
+
+      if (!address) {
+        const provider = (window as any).backpack || (window as any).solana;
+        if (provider) {
+          const resp = await provider.connect();
+          address = resp.publicKey?.toString() || resp.address;
+        }
       }
 
-      const provider = (window as any).backpack || (window as any).solana;
-
-      if (!provider) {
-        if (confirm(t.walletRequired)) {
-          window.open('https://backpack.app/download', '_blank');
-        }
+      if (!address) {
+        // If not connected via Wagmi and no Solana wallet, prompt
+        // For now, let RainbowKit handle the UI if used inside Navbar
         setIsConnecting(false);
         return;
-      }
-
-      // Step 1: Connect
-      const resp = await provider.connect();
-      const address = resp.publicKey?.toString() || resp.address;
-
-      if (!address) throw new Error("Wallet address missing");
-
-      // Step 2: Signature
-      const message = `CARV Protocol Identity Authorization\n\nSign this message to bind your identity:\nWallet: ${address}\nTimestamp: ${new Date().toISOString()}\n\nNo gas fees are required for this signature.`;
-      const encodedMessage = new TextEncoder().encode(message);
-
-      try {
-        if (provider.signMessage) {
-          await provider.signMessage(encodedMessage);
-        }
-      } catch (e) {
-        console.warn("Signature declined, proceeding in restricted mode.");
       }
 
       // Step 3: Fetch Profile from DB
@@ -133,7 +139,6 @@ const App: React.FC = () => {
 
     } catch (err: any) {
       console.error("Wallet Error:", err);
-      alert(lang === 'ar' ? "فشل الاتصال. يرجى التأكد من المحفظة." : "Connection failed. Please check your wallet.");
     } finally {
       setIsConnecting(false);
     }
@@ -162,19 +167,14 @@ const App: React.FC = () => {
             <p className="text-gray-400 text-lg max-w-md mx-auto">{t.landingDesc}</p>
           </div>
           <div className="space-y-6 relative z-10">
+            {/* Custom Connect Button logic handled by Navbar or direct Wagmi usage */}
             <button
-              onClick={connectWallet}
+              onClick={() => connectWallet()}
               disabled={isConnecting}
               className="w-full gradient-bg py-7 rounded-[30px] font-black text-2xl hover:scale-[1.05] active:scale-95 transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 group disabled:opacity-50"
             >
-              {isConnecting ? (
-                <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <img src="https://backpack.app/favicon.ico" className="w-8 h-8 rounded-lg" alt="BP" />
-                  {t.connectWallet}
-                </>
-              )}
+              {/* Simplified for demo: merges solana/evm flow */}
+              {isConnecting ? "Connecting..." : t.connectWallet}
             </button>
             <div className="flex justify-center gap-6 pt-6 border-t border-white/5">
               <button onClick={() => setLang('ar')} className={`text-sm font-black uppercase tracking-widest ${lang === 'ar' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>العربية</button>
@@ -189,7 +189,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col relative z-10">
-      <Navbar lang={lang} setLang={setLang} user={user} onConnect={connectWallet} t={t} onOpenPremium={() => setShowPremiumModal(true)} />
+      <Navbar lang={lang} setLang={setLang} user={user} onConnect={() => connectWallet()} t={t} onOpenPremium={() => setShowPremiumModal(true)} />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700 pb-32">
         {activeTab === 'tasks' && (
           <Dashboard
@@ -302,6 +302,18 @@ const App: React.FC = () => {
         <AdminPanel currentUser={user} onClose={() => setShowAdmin(false)} />
       )}
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          <AppContent />
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 };
 
