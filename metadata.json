@@ -1,0 +1,10 @@
+{
+  "name": "CARVFi - Professional Web3 Loyalty Platform",
+  "description": "The elite SVM-based loyalty hub featuring level-based rewards, AI challenges, and real Backpack Wallet integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "version": "2.1.0",
+  "author": "CARVFi Protocol Team"
+}
