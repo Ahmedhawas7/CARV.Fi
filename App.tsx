@@ -9,11 +9,14 @@ import Leaderboard from './components/Leaderboard';
 import ChatBot from './components/ChatBot';
 import Profile from './components/Profile';
 import AdminPanel from './components/AdminPanel';
+import Store from './components/Store';
+import PremiumModal from './components/PremiumModal';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile' | 'store'>('tasks');
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [refInput, setRefInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
@@ -182,7 +185,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col relative z-10">
-      <Navbar lang={lang} setLang={setLang} user={user} onConnect={connectWallet} t={t} />
+      <Navbar lang={lang} setLang={setLang} user={user} onConnect={connectWallet} t={t} onOpenPremium={() => setShowPremiumModal(true)} />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700 pb-32">
         {activeTab === 'tasks' && (
           <Dashboard
@@ -217,14 +220,38 @@ const App: React.FC = () => {
           setUser(newUser);
           dbService.saveUser(newUser).catch(console.error);
         }} />}
+        {activeTab === 'store' && user && (
+          <Store
+            user={user}
+            t={t}
+            updatePoints={updatePoints}
+            onUpdateUser={(fields) => {
+              const newUser = { ...user, ...fields };
+              setUser(newUser);
+            }}
+          />
+        )}
       </main>
 
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card rounded-[40px] px-8 py-4 border border-white/10 shadow-2xl z-50 flex items-center gap-10">
         <NavBtn id="tasks" current={activeTab} onClick={setActiveTab} icon="💎" label={t.tasks} />
+        <NavBtn id="store" current={activeTab} onClick={setActiveTab} icon="🛍️" label="Shop" />
         <NavBtn id="chat" current={activeTab} onClick={setActiveTab} icon="🤖" label={t.chatWithAI} />
         <NavBtn id="leaderboard" current={activeTab} onClick={setActiveTab} icon="🏆" label={t.leaderboard} />
         <NavBtn id="profile" current={activeTab} onClick={setActiveTab} icon="👤" label={t.profile} />
       </nav>
+
+
+      {showPremiumModal && user && (
+        <PremiumModal
+          user={user}
+          onClose={() => setShowPremiumModal(false)}
+          onUpgrade={() => {
+            const newUser = { ...user, isPremium: true };
+            setUser(newUser);
+          }}
+        />
+      )}
 
       {showReferralModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
