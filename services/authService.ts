@@ -1,55 +1,75 @@
+import { sessionStore } from './sessionStore';
+import { ChainType } from './web3Config';
 
 interface AuthSession {
     address: string;
+    chain: ChainType;
     signature: string;
-    network: 'base' | 'solana';
     timestamp: number;
+    loginStreak: number;
 }
 
-const STORAGE_KEY = 'carvfi_session';
+class AuthService {
+    private currentSession: AuthSession | null = null;
 
-export const authService = {
-    // Save session
-    login: (address: string, signature: string, network: 'base' | 'solana' = 'base') => {
-        const session: AuthSession = {
-            address,
+    async login(address: string, chain: ChainType, signature: string): Promise<void> {
+        const timestamp = Date.now();
+
+        await sessionStore.saveSession({
+            walletAddress: address,
+            chain,
             signature,
-            network,
-            timestamp: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-        return session;
-    },
+            timestamp,
+        });
 
-    // Check if logged in
-    getSession: (): AuthSession | null => {
-        const data = localStorage.getItem(STORAGE_KEY);
-        if (!data) return null;
-        try {
-            const session: AuthSession = JSON.parse(data);
-            // Optional: Expiry check (e.g. 24h)
-            if (Date.now() - session.timestamp > 86400000) {
-                localStorage.removeItem(STORAGE_KEY);
-                return null;
-            }
-            return session;
-        } catch {
-            return null;
-        }
-    },
-
-    // Clear session
-    logout: () => {
-        localStorage.removeItem(STORAGE_KEY);
-        // Also clear Wagmi/RainbowKit state if possible, or reload page
-    },
-
-    // Update network pref
-    setNetwork: (network: 'base' | 'solana') => {
-        const session = authService.getSession();
+        const session = await sessionStore.getSession(address, chain);
         if (session) {
-            session.network = network;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+            this.currentSession = {
+                address: session.walletAddress,
+                chain: session.chain,
+                signature: session.signature,
+                timestamp: session.timestamp,
+                loginStreak: session.loginStreak,
+            };
         }
     }
-};
+
+    async restoreSession(address: string, chain: ChainType): Promise<AuthSession | null> {
+        const session = await sessionStore.getSession(address, chain);
+        if (!session) {
+            this.currentSession = null;
+            return null;
+        }
+
+        this.currentSession = {
+            address: session.walletAddress,
+            chain: session.chain,
+            signature: session.signature,
+            timestamp: session.timestamp,
+            loginStreak: session.loginStreak,
+        };
+
+        return this.currentSession;
+    }
+
+    async logout(address: string, chain: ChainType): Promise<void> {
+        await sessionStore.clearSession(address, chain);
+        this.currentSession = null;
+    }
+
+    getCurrentSession(): AuthSession | null {
+        return this.currentSession;
+    }
+
+    getLoginStreak(): number {
+        return this.currentSession?.loginStreak || 0;
+    }
+
+    // Generate message to sign for authentication
+    generateAuthMessage(address: string, chain: ChainType): string {
+        const timestamp = Date.now();
+        return `Sign to authenticate with CARVFi\n\nWallet: ${address}\nChain: ${chain}\nTimestamp: ${timestamp}\n\nThis signature will not trigger any blockchain transaction or cost gas.`;
+    }
+}
+
+export const authService = new AuthService();
