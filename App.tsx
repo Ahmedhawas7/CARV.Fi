@@ -138,7 +138,10 @@ const AppContent: React.FC = () => {
         const msg = `Sign to authenticate with CARVFi\nWallet: ${address}\nTimestamp: ${timestamp}`;
 
         try {
-          const signature = await signMessageAsync({ message: msg });
+          const signature = await signMessageAsync({
+            message: msg,
+            account: address as `0x${string}`
+          });
           authService.login(address, signature);
         } catch (e) {
           console.warn("User reject sig", e);
