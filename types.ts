@@ -20,9 +20,30 @@ export interface User {
   referredBy?: string;
   referralsCount: number;
 
+
   isNewUser?: boolean;
   email?: string;
+  isPremium?: boolean;
+  inventory?: InventoryItem[];
 }
+
+export interface InventoryItem {
+  id: string;
+  itemId: string;
+  name: string;
+  purchasedAt: number;
+}
+
+export interface StoreItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  type: 'digital' | 'physical' | 'boost';
+  stock?: number;
+}
+
 
 
 export type TaskType = 'social' | 'daily' | 'referral' | 'youtube';

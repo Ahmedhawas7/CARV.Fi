@@ -56,12 +56,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-6">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-indigo-500">
+              <div className={`w-24 h-24 rounded-full p-1 bg-gradient-to-tr ${user.isPremium ? 'from-yellow-400 to-orange-500 shadow-[0_0_30px_rgba(234,179,8,0.5)]' : 'from-primary to-indigo-500'}`}>
                 <img src={user.avatar} alt="Profile" className="w-full h-full rounded-full object-cover border-4 border-background" />
               </div>
-              <div className="absolute -bottom-2 -right-2 bg-black px-3 py-1 rounded-full border border-primary text-xs font-black text-primary uppercase">
-                Lv. {user.level}
+              <div className={`absolute -bottom-2 -right-2 px-3 py-1 rounded-full border text-xs font-black uppercase ${user.isPremium ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-black border-primary text-primary'}`}>
+                {user.isPremium ? 'ELITE' : `Lv. ${user.level}`}
               </div>
+
             </div>
             <div>
               <h2 className="text-3xl font-black italic tracking-tighter uppercase">{user.username}</h2>
@@ -117,8 +118,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
             key={f}
             onClick={() => setFilter(f as any)}
             className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${filter === f
-                ? 'bg-white text-black border-white'
-                : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'
+              ? 'bg-white text-black border-white'
+              : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'
               }`}
           >
             {f} Tasks
