@@ -1,13 +1,9 @@
 {
     "buildCommand": "npm run build",
-    "installCommand": "npm install",
-    "outputDirectory": "dist",
     "rewrites": [
         {
             "source": "/(.*)",
             "destination": "/index.html"
         }
-    ],
-    "cleanUrls": true,
-    "framework": "vite"
+    ]
 }
