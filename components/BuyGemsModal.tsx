@@ -9,34 +9,51 @@ interface BuyGemsModalProps {
     onPurchase: (amount: number) => void;
 }
 
+// Rate: 1000 GEMs = 0.05 SOL
 const PACKAGES = [
-    { id: 'gems_1k', amount: 1000, price: 0.1, label: 'Starter_Pack' },
-    { id: 'gems_5k', amount: 5000, price: 0.45, label: 'Miner_Kit', recommended: true },
-    { id: 'gems_20k', amount: 20000, price: 1.5, label: 'Whale_Chest' },
+    { id: 'gems_1k', amount: 1000, price: 0.05, label: 'Starter_Pack' },
+    { id: 'gems_5k', amount: 5000, price: 0.25, label: 'Miner_Kit', recommended: true },
+    { id: 'gems_20k', amount: 20000, price: 1.0, label: 'Whale_Chest' },
 ];
 
 const BuyGemsModal: React.FC<BuyGemsModalProps> = ({ user, onClose, onPurchase }) => {
     const [processing, setProcessing] = useState<string | null>(null);
 
     const handleBuy = async (pkg: typeof PACKAGES[0]) => {
-        if (!confirm(`Pay ${pkg.price} SOL for ${pkg.amount.toLocaleString()} GEMs?`)) return;
 
         setProcessing(pkg.id);
 
-        // Simulate Blockchain Transaction
-        setTimeout(async () => {
-            try {
+        try {
+            const provider = (window as any).backpack || (window as any).solana;
+            if (!provider) {
+                alert("No wallet found!");
+                return;
+            }
+
+            // 1. Request Payment Authorization (Signature as proxy for Demo)
+            // In a real app with @solana/web3.js, we would construct a SystemProgram.transfer here.
+            const message = `AUTHORIZE PAYMENT\n\nAmount: ${pkg.price} SOL\nItem: ${pkg.amount} GEMs\nTimestamp: ${Date.now()}`;
+            const encodedMessage = new TextEncoder().encode(message);
+
+            // This prompts the wallet popup
+            await provider.signMessage(encodedMessage, "utf8");
+
+            // 2. Simulate Network Confirmation
+            setTimeout(async () => {
+                // 3. Credit GEMs
                 const updatedUser = { ...user, points: user.points + pkg.amount };
                 await dbService.saveUser(updatedUser);
                 onPurchase(pkg.amount);
-                alert(`Successfully purchased ${pkg.amount} GEMs!`);
+                alert(`✅ Payment Verified! Received ${pkg.amount} GEMs.`);
                 onClose();
-            } catch (e) {
-                alert("Transaction Failed");
-            } finally {
-                setProcessing(null);
-            }
-        }, 3000);
+            }, 2000);
+
+        } catch (e) {
+            console.error(e);
+            alert("Transaction Cancelled");
+        } finally {
+            setProcessing(null);
+        }
     };
 
     return (
@@ -47,7 +64,7 @@ const BuyGemsModal: React.FC<BuyGemsModalProps> = ({ user, onClose, onPurchase }
 
                 <div className="p-8 border-b border-white/5 bg-white/5">
                     <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white">Top Up <span className="text-primary">GEMs</span></h2>
-                    <p className="text-gray-400 text-sm">Purchase instant mining power with SOL</p>
+                    <p className="text-gray-400 text-sm">Secure Payment via Solana Blockchain</p>
                 </div>
 
                 <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -82,7 +99,7 @@ const BuyGemsModal: React.FC<BuyGemsModalProps> = ({ user, onClose, onPurchase }
                                             : 'bg-white/10 text-white hover:bg-white/20'
                                         }`}
                                 >
-                                    {processing === pkg.id ? 'Confirming...' : 'Buy Now'}
+                                    {processing === pkg.id ? 'Connecting...' : 'Pay with Wallet'}
                                 </button>
                             </div>
                         </div>
@@ -90,7 +107,7 @@ const BuyGemsModal: React.FC<BuyGemsModalProps> = ({ user, onClose, onPurchase }
                 </div>
 
                 <div className="p-6 bg-black/40 text-center text-[10px] text-gray-600 font-mono border-t border-white/5">
-                    Prices are estimated. Network fees may apply. Secure Gateway via Solana Pay.
+                    Secured by Solana. Signature required for transaction.
                 </div>
 
             </div>

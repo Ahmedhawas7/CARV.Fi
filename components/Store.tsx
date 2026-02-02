@@ -16,7 +16,7 @@ const ITEMS: StoreItem[] = [
         id: 'boost_2x_24h',
         name: '2x Mining Boost',
         description: 'Double your mining speed for 24 hours. Maximum efficiency.',
-        price: 500,
+        price: 250,
         image: '⚡',
         type: 'boost'
     },
@@ -24,7 +24,7 @@ const ITEMS: StoreItem[] = [
         id: 'raffle_ticket_eth',
         name: 'ETH Raffle Ticket',
         description: 'Entry into the weekly 1 ETH prize pool. Winner announced Sunday.',
-        price: 250,
+        price: 125,
         image: '🎟️',
         type: 'digital'
     },
@@ -32,7 +32,7 @@ const ITEMS: StoreItem[] = [
         id: 'discord_role_vip',
         name: 'VIP Discord Role',
         description: 'Get the exclusive "Node Operator" role and private channel access.',
-        price: 1000,
+        price: 500,
         image: '👑',
         type: 'digital'
     },
@@ -40,7 +40,7 @@ const ITEMS: StoreItem[] = [
         id: 'whitelist_spot',
         name: 'Alpha WL Spot',
         description: 'Guaranteed whitelist for the upcoming "Neural Nodes" NFT mint.',
-        price: 5000,
+        price: 2500,
         image: '📝',
         type: 'digital',
         stock: 10
