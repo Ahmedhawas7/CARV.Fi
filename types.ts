@@ -25,7 +25,27 @@ export interface User {
   email?: string;
   isPremium?: boolean;
   inventory?: InventoryItem[];
+  dailyTicketCount?: number;
+  lastTicketDate?: string; // YYYY-MM-DD
 }
+
+export interface LotteryPool {
+  id: string; // 'daily_YYYY-MM-DD' or 'weekly_YYYY-WW'
+  type: 'daily' | 'weekly';
+  status: 'open' | 'completed';
+  prizePool: number;
+  participants: string[]; // List of wallet addresses
+  winners?: { wallet: string; amount: number }[];
+  drawnAt?: string;
+}
+
+export interface LotteryTicket {
+  id: string;
+  userId: string;
+  poolId: string;
+  purchasedAt: number;
+}
+
 
 export interface InventoryItem {
   id: string;
