@@ -18,8 +18,8 @@ export const translations = {
     checkedIn: 'Mined Today',
     chatWithAI: 'AI Oracle',
     topUsers: 'Top Data Contributors',
-    verify: 'Bind Data',
-    complete: 'Attested',
+    verify: 'Verify',
+    complete: 'Verified',
     earned: 'Acquired',
     pointsNotice: 'Your data generates GEMs daily.',
     welcome: 'Self-Sovereign Identity Protocol',
@@ -53,7 +53,9 @@ export const translations = {
     weekly: 'Current Era',
     generateAvatar: 'Neural Generate',
     generating: 'Transmuting...',
-    avatarPrompt: 'Describe your Neural Soul...'
+    avatarPrompt: 'Describe your Neural Soul...',
+    unbound: 'Unbound',
+    pending: 'Pending Sync'
   },
   ar: {
     appName: 'CARVFi',
@@ -73,8 +75,8 @@ export const translations = {
     checkedIn: 'تم التعدين',
     chatWithAI: 'أوراكل الذكاء الاصطناعي',
     topUsers: 'أكبر مساهمي البيانات',
-    verify: 'ربط البيانات',
-    complete: 'تم التوثيق',
+    verify: 'توثيق',
+    complete: 'موثق',
     earned: 'حصلت على',
     pointsNotice: 'بياناتك تولد الجواهر يومياً.',
     welcome: 'بروتوكول الهوية السيادية',
@@ -108,6 +110,8 @@ export const translations = {
     weekly: 'الحقبة الحالية',
     generateAvatar: 'توليد عصبي',
     generating: 'جاري التحويل...',
-    avatarPrompt: 'صف روحك العصبية...'
+    avatarPrompt: 'صف روحك العصبية...',
+    unbound: 'غير مرتبط',
+    pending: 'قيد المزامنة'
   }
 };

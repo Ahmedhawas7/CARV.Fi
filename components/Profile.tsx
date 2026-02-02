@@ -64,33 +64,42 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
     const currentVal = formData[field];
     const savedVal = (user as any)[field] || '';
     
+    // If user deleted the text, it's unbound
+    if (!currentVal || currentVal.trim() === '') return 'unbound';
+    // If current text is different from what's saved in the database
     if (currentVal !== savedVal) return 'pending';
-    if (savedVal && savedVal.trim() !== '') return 'verified';
-    return 'unbound';
+    // If it matches the saved text
+    return 'verified';
   };
 
   const StatusBadge = ({ status }: { status: 'pending' | 'verified' | 'unbound' }) => {
     if (status === 'pending') {
       return (
-        <span className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500/10 text-yellow-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-yellow-500/20 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
-          Pending Sync
-        </span>
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500/10 text-yellow-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-yellow-500/20 animate-pulse">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {t.pending}
+        </div>
       );
     }
     if (status === 'verified') {
       return (
-        <span className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-green-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"></span>
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.2)] animate-in zoom-in duration-300">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
           {t.complete}
-        </span>
+        </div>
       );
     }
     return (
-      <span className="flex items-center gap-1.5 px-3 py-1 bg-white/5 text-gray-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/5">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-700"></span>
-        Unbound
-      </span>
+      <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 text-gray-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/5 opacity-60">
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+        {t.unbound}
+      </div>
     );
   };
 
@@ -136,7 +145,7 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
         <div className="flex flex-col items-center gap-10">
           <div className="relative group">
             <div className="absolute -inset-4 gradient-bg rounded-full opacity-20 group-hover:opacity-100 blur-2xl transition duration-1000"></div>
-            <img src={formData.avatar} className="relative w-48 h-48 rounded-full border-4 border-primary/30 p-2 bg-background shadow-[0_0_50px_rgba(0,0,0,0.5)] object-cover" alt="Avatar" />
+            <img src={formData.avatar} className="relative w-48 h-48 rounded-full border-4 border-primary/30 p-2 bg-background shadow-[0_0_50px_rgba(0,0,0,0.5)] object-cover transition-transform duration-500 group-hover:scale-105" alt="Avatar" />
             {isGenerating && (
                <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center z-20">
                   <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -145,7 +154,6 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
             <div className="absolute bottom-2 right-2 w-12 h-12 gradient-bg rounded-2xl flex items-center justify-center border-2 border-background shadow-xl">✨</div>
           </div>
           
-          {/* AI Generator UI */}
           <div className="w-full max-w-md space-y-4">
              <p className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">{t.avatar}</p>
              <div className="relative">
@@ -212,27 +220,50 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
                 { key: 'twitter' as const, icon: '🐦', label: t.twitter },
                 { key: 'discord' as const, icon: '👾', label: t.discord },
                 { key: 'telegram' as const, icon: '✈️', label: t.telegram }
-              ].map((social) => (
-                <div key={social.key} className="relative group">
-                   <div className="flex items-center gap-4 bg-black/20 p-4 rounded-[35px] border border-white/5 group-hover:border-white/10 transition-all">
-                      <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-2xl border border-white/5 shadow-inner">
-                        {social.icon}
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between px-2">
-                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{social.label}</label>
-                           <StatusBadge status={getStatus(social.key)} />
+              ].map((social) => {
+                const status = getStatus(social.key);
+                return (
+                  <div key={social.key} className="relative group">
+                    <div className={`flex items-center gap-4 bg-black/20 p-4 rounded-[35px] border transition-all duration-500 ${
+                      status === 'pending' ? 'border-yellow-500/30 bg-yellow-500/5 shadow-[0_0_20px_rgba(234,179,8,0.05)]' : 
+                      status === 'verified' ? 'border-green-500/20 bg-green-500/5' : 
+                      'border-white/5'
+                    }`}>
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all duration-500 ${
+                          status === 'verified' ? 'bg-green-500/10 text-glow' : 
+                          status === 'pending' ? 'bg-yellow-500/10' : 
+                          'bg-white/5'
+                        }`}>
+                          {social.icon}
                         </div>
-                        <input 
-                          value={formData[social.key]}
-                          onChange={(e) => updateField(social.key, e.target.value)}
-                          className="w-full bg-transparent border-none focus:ring-0 outline-none text-lg font-mono placeholder:text-gray-800"
-                          placeholder="@handle_id"
-                        />
-                      </div>
-                   </div>
-                </div>
-              ))}
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between px-2">
+                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{social.label}</label>
+                             <StatusBadge status={status} />
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <input 
+                              value={formData[social.key]}
+                              onChange={(e) => updateField(social.key, e.target.value)}
+                              className={`w-full bg-transparent border-none focus:ring-0 outline-none text-lg font-mono placeholder:text-gray-800 transition-all ${
+                                status === 'verified' ? 'text-green-400' : 'text-white'
+                              }`}
+                              placeholder="@handle_id"
+                            />
+                            {status === 'pending' && (
+                              <button 
+                                onClick={handleSave}
+                                className="px-5 py-2 bg-primary/20 hover:bg-primary/40 text-primary text-[10px] font-black uppercase rounded-xl transition-all border border-primary/20 animate-in fade-in"
+                              >
+                                {t.verify}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                    </div>
+                  </div>
+                );
+              })}
            </div>
         </div>
 
@@ -240,7 +271,14 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
           onClick={handleSave}
           className="w-full gradient-bg py-8 rounded-[35px] font-black text-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-primary/40 flex items-center justify-center gap-4 group"
         >
-          {isSaved ? <span className="flex items-center gap-3 animate-in zoom-in">✅ {t.identitySaved}</span> : t.saveChanges}
+          {isSaved ? (
+            <span className="flex items-center gap-3 animate-in zoom-in">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {t.identitySaved}
+            </span>
+          ) : t.saveChanges}
         </button>
       </div>
     </div>
