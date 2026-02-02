@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
 import ChatBot from './components/ChatBot';
 import Profile from './components/Profile';
+import AdminPanel from './components/AdminPanel';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [refInput, setRefInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const t = translations[lang];
 
@@ -123,26 +125,8 @@ const App: React.FC = () => {
 
     } catch (err: any) {
       console.error("Wallet Error:", err);
-      // Fallback Demo
-      if (confirm(lang === 'ar' ? "فشل الاتصال. هل تريد الدخول بوضع العرض (Demo)؟" : "Connection failed. Enter Demo Mode?")) {
-        const demoAddr = "CARV_SBT_" + Math.random().toString(36).slice(2, 7).toUpperCase();
-        // Create demo user in DB too so tasks work
-        const demoUser: User = {
-          walletAddress: demoAddr,
-          username: 'Demo_Agent',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
-          points: 100,
-          streak: 1,
-          level: 1,
-          lastCheckIn: null,
-          tasksCompleted: [],
-          referralCode: '000000',
-          referralsCount: 0,
-          isNewUser: false
-        };
-        await dbService.saveUser(demoUser);
-        setUser(demoUser);
-      }
+      alert(lang === 'ar' ? "فشل الاتصال. يرجى التأكد من المحفظة." : "Connection failed. Please check your wallet.");
+      // Strict Mode: No fallback demo user anymore
     } finally {
       setIsConnecting(false);
     }
@@ -241,6 +225,7 @@ const App: React.FC = () => {
         <NavBtn id="leaderboard" current={activeTab} onClick={setActiveTab} icon="🏆" label={t.leaderboard} />
         <NavBtn id="profile" current={activeTab} onClick={setActiveTab} icon="👤" label={t.profile} />
       </nav>
+
       {showReferralModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
           <div className="glass-card p-12 rounded-[50px] max-w-md w-full space-y-10 border border-primary/40 shadow-2xl">
@@ -260,6 +245,22 @@ const App: React.FC = () => {
             <button onClick={() => handleReferralSubmit(true)} className="w-full text-gray-500 font-bold uppercase text-xs tracking-widest">{t.skip}</button>
           </div>
         </div>
+      )}
+
+      {/* Admin Floating Button */}
+      {user && (
+        <button
+          onClick={() => setShowAdmin(true)}
+          className="fixed bottom-32 right-6 w-12 h-12 bg-white/5 hover:bg-primary text-gray-400 hover:text-black rounded-full flex items-center justify-center transition-all z-40 border border-white/10"
+          title="Admin Panel"
+        >
+          ⚙️
+        </button>
+      )}
+
+      {/* Admin Panel Overlay */}
+      {showAdmin && user && (
+        <AdminPanel currentUser={user} onClose={() => setShowAdmin(false)} />
       )}
     </div>
   );
