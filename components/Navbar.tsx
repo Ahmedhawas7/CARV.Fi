@@ -2,6 +2,7 @@
 import React from 'react';
 import { Language, User } from '../types';
 import { useDisconnect } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { authService } from '../services/authService';
 
 interface NavbarProps {
@@ -46,8 +47,8 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, user, onConnect, t, onOp
           <button
             onClick={toggleNetwork}
             className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${currentNetwork === 'base'
-                ? 'border-blue-500 text-blue-400 bg-blue-500/10'
-                : 'border-purple-500 text-purple-400 bg-purple-500/10'
+              ? 'border-blue-500 text-blue-400 bg-blue-500/10'
+              : 'border-purple-500 text-purple-400 bg-purple-500/10'
               }`}
           >
             {currentNetwork === 'base' ? '🔵 BASE' : '🟣 SOLANA'}
@@ -89,12 +90,7 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, user, onConnect, t, onOp
               </button>
             </div>
           ) : (
-            <button
-              onClick={onConnect}
-              className="gradient-bg px-6 py-2 rounded-xl font-bold hover:opacity-90 transition-opacity whitespace-nowrap shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-            >
-              {t.connectWallet}
-            </button>
+            <ConnectButton label={t.connectWallet} showBalance={false} chainStatus="icon" accountStatus="avatar" />
           )}
         </div>
       </div>

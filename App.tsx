@@ -121,10 +121,8 @@ const AppContent: React.FC = () => {
     try {
       let address = forcedAddress;
 
-      // Fallback if not driven by wagmi hook (e.g. initial button click)
+      // Ensure address is present (triggered by Wagmi effect)
       if (!address) {
-        // Assuming button click triggered wallet connect via Wagmi UI externally
-        // So we just return and let useEffect catch the address change
         setIsConnecting(false);
         return;
       }
