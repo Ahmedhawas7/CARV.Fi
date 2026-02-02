@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Language, User } from './types';
 import { translations } from './translations';
-import { mockStore } from './services/mockStore';
+import { dbService } from './services/database';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
@@ -10,13 +10,13 @@ import ChatBot from './components/ChatBot';
 import Profile from './components/Profile';
 
 const App: React.FC = () => {
-  const [lang, setLang] = useState<Language>('en'); 
+  const [lang, setLang] = useState<Language>('en');
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile'>('tasks');
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [refInput, setRefInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
-  
+
   const t = translations[lang];
 
   useEffect(() => {
@@ -25,6 +25,9 @@ const App: React.FC = () => {
   }, [lang]);
 
   useEffect(() => {
+    // Initialize DB on mount
+    dbService.init().catch(console.error);
+
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
     if (ref && ref.length === 6) {
@@ -42,13 +45,16 @@ const App: React.FC = () => {
     return 50 * Math.pow(user.level, 2);
   }, [user]);
 
-  const updatePoints = useCallback((amount: number) => {
+  const updatePoints = useCallback(async (amount: number) => {
     setUser(prev => {
       if (!prev) return null;
       const newPoints = prev.points + amount;
       const newLevel = calculateLevel(newPoints);
       const newUser = { ...prev, points: newPoints, level: newLevel };
-      mockStore.updateUser(newUser);
+
+      // Async update DB
+      dbService.saveUser(newUser).catch(console.error);
+
       return newUser;
     });
   }, []);
@@ -56,9 +62,8 @@ const App: React.FC = () => {
   const connectWallet = async () => {
     if (isConnecting) return;
     setIsConnecting(true);
-    
+
     try {
-      // Logic for standalone window check
       if (window.self !== window.top) {
         alert(lang === 'ar' ? 'يرجى فتح الموقع في تبويب مستقل لربط المحفظة.' : 'Please open the site in a standalone tab to connect your wallet.');
       }
@@ -76,14 +81,13 @@ const App: React.FC = () => {
       // Step 1: Connect
       const resp = await provider.connect();
       const address = resp.publicKey?.toString() || resp.address;
-      
+
       if (!address) throw new Error("Wallet address missing");
 
-      // Step 2: Request Signature (Official CARV Style)
-      // This is necessary for verifying the Data Attestation identity
+      // Step 2: Signature
       const message = `CARV Protocol Identity Authorization\n\nSign this message to bind your identity:\nWallet: ${address}\nTimestamp: ${new Date().toISOString()}\n\nNo gas fees are required for this signature.`;
       const encodedMessage = new TextEncoder().encode(message);
-      
+
       try {
         if (provider.signMessage) {
           await provider.signMessage(encodedMessage);
@@ -92,31 +96,65 @@ const App: React.FC = () => {
         console.warn("Signature declined, proceeding in restricted mode.");
       }
 
-      // Step 3: Fetch Profile
-      const profile = mockStore.getUserByWallet(address);
-      setUser(profile);
-      
-      if (profile.isNewUser) {
+      // Step 3: Fetch Profile from DB
+      let profile = await dbService.getUser(address);
+
+      if (!profile) {
+        // Create new user if not found
+        const generateRefCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+        profile = {
+          walletAddress: address,
+          username: `Agent_${address.slice(0, 4)}`,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+          points: 0,
+          streak: 0,
+          level: 1,
+          lastCheckIn: null,
+          tasksCompleted: [], // Unused for logic but kept for type compat
+          referralCode: generateRefCode(),
+          referralsCount: 0,
+          isNewUser: true
+        };
+        await dbService.saveUser(profile);
         setShowReferralModal(true);
       }
+
+      setUser(profile);
+
     } catch (err: any) {
       console.error("Wallet Error:", err);
       // Fallback Demo
       if (confirm(lang === 'ar' ? "فشل الاتصال. هل تريد الدخول بوضع العرض (Demo)؟" : "Connection failed. Enter Demo Mode?")) {
         const demoAddr = "CARV_SBT_" + Math.random().toString(36).slice(2, 7).toUpperCase();
-        setUser(mockStore.getUserByWallet(demoAddr));
+        // Create demo user in DB too so tasks work
+        const demoUser: User = {
+          walletAddress: demoAddr,
+          username: 'Demo_Agent',
+          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+          points: 100,
+          streak: 1,
+          level: 1,
+          lastCheckIn: null,
+          tasksCompleted: [],
+          referralCode: '000000',
+          referralsCount: 0,
+          isNewUser: false
+        };
+        await dbService.saveUser(demoUser);
+        setUser(demoUser);
       }
     } finally {
       setIsConnecting(false);
     }
   };
 
-  const handleReferralSubmit = (isSkip = false) => {
+  const handleReferralSubmit = async (isSkip = false) => {
     if (!user) return;
     let bonus = (!isSkip && refInput.length === 6) ? 300 : 0;
     const updatedUser = { ...user, isNewUser: false, points: user.points + bonus, level: calculateLevel(user.points + bonus) };
+
+    await dbService.saveUser(updatedUser);
     setUser(updatedUser);
-    mockStore.updateUser(updatedUser);
     setShowReferralModal(false);
   };
 
@@ -133,7 +171,7 @@ const App: React.FC = () => {
             <p className="text-gray-400 text-lg max-w-md mx-auto">{t.landingDesc}</p>
           </div>
           <div className="space-y-6 relative z-10">
-            <button 
+            <button
               onClick={connectWallet}
               disabled={isConnecting}
               className="w-full gradient-bg py-7 rounded-[30px] font-black text-2xl hover:scale-[1.05] active:scale-95 transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 group disabled:opacity-50"
@@ -163,29 +201,29 @@ const App: React.FC = () => {
       <Navbar lang={lang} setLang={setLang} user={user} onConnect={connectWallet} t={t} />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700 pb-32">
         {activeTab === 'tasks' && (
-          <Dashboard 
-            user={user} 
-            t={t} 
+          <Dashboard
+            user={user}
+            t={t}
             onCheckIn={() => {
               const today = new Date().toISOString().split('T')[0];
               if (user.lastCheckIn === today) return;
               updatePoints(10);
               const newUser = { ...user, streak: user.streak + 1, lastCheckIn: today };
               setUser(newUser);
-              mockStore.updateUser(newUser);
+              dbService.saveUser(newUser).catch(console.error);
             }}
             updatePoints={updatePoints}
             nextLevelPoints={nextLevelPoints}
-            checkInReward={10} 
+            checkInReward={10}
           />
         )}
         {activeTab === 'leaderboard' && <Leaderboard t={t} />}
         {activeTab === 'chat' && (
-          <ChatBot 
-            isOpen={true} 
-            setIsOpen={() => {}} 
-            lang={lang} 
-            t={t} 
+          <ChatBot
+            isOpen={true}
+            setIsOpen={() => { }}
+            lang={lang}
+            t={t}
             updatePoints={updatePoints}
             isStandalone
           />
@@ -193,7 +231,7 @@ const App: React.FC = () => {
         {activeTab === 'profile' && <Profile user={user} t={t} onUpdate={(fields) => {
           const newUser = { ...user, ...fields };
           setUser(newUser);
-          mockStore.updateUser(newUser);
+          dbService.saveUser(newUser).catch(console.error);
         }} />}
       </main>
 
@@ -210,7 +248,7 @@ const App: React.FC = () => {
               <h2 className="text-4xl font-black text-glow italic uppercase">{t.referralTitle}</h2>
               <p className="text-gray-400 text-sm">{t.referralDesc}</p>
             </div>
-            <input 
+            <input
               value={refInput}
               onChange={(e) => setRefInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
               className="w-full bg-black/60 border-2 border-primary/20 rounded-[30px] p-6 text-center text-4xl font-mono tracking-[0.6em] focus:border-primary outline-none"
@@ -228,7 +266,7 @@ const App: React.FC = () => {
 };
 
 const NavBtn = ({ id, current, onClick, icon, label }: any) => (
-  <button 
+  <button
     onClick={() => onClick(id)}
     className={`flex flex-col items-center gap-1 transition-all relative ${current === id ? 'text-primary scale-125' : 'text-gray-500 hover:text-gray-300'}`}
   >

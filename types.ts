@@ -9,7 +9,7 @@ export interface User {
   streak: number;
   level: number;
   lastCheckIn: string | null;
-  tasksCompleted: string[];
+  tasksCompleted: string[]; // Deprecated, use UserTaskProgress in DB
   carvUid?: string;
   playDomain?: string;
   twitter?: string;
@@ -22,13 +22,40 @@ export interface User {
   isNewUser?: boolean;
 }
 
-export interface Task {
+export type TaskType = 'social' | 'daily' | 'referral' | 'youtube';
+export type TaskPlatform = 'twitter' | 'discord' | 'youtube' | 'telegram' | 'website';
+export type TaskAction = 'like' | 'share' | 'follow' | 'subscribe' | 'join' | 'visit';
+export type TaskFrequency = 'once' | 'daily' | 'weekly';
+
+export interface TaskConfig {
   id: string;
+  type: TaskType;
+  platform: TaskPlatform;
+  action: TaskAction;
   title: string;
   description: string;
   points: number;
-  type: 'daily' | 'twitter' | 'chat';
+  url?: string;
+  frequency: TaskFrequency;
   icon: string;
+  isActive: boolean;
+  waitTimestamp?: number; // Optional wait time in seconds before verification
+}
+
+export interface UserTaskProgress {
+  userId: string;
+  taskId: string;
+  status: 'pending' | 'completed';
+  completedAt: number;
+  lastClaimedAt?: number;
+}
+
+export interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'reward';
+  message: string;
+  timestamp: number;
+  read: boolean;
 }
 
 export interface LeaderboardEntry {
