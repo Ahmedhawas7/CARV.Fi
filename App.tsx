@@ -14,6 +14,7 @@ import PremiumModal from './components/PremiumModal';
 import Lottery from './components/Lottery';
 import WalletSelectorModal from './components/WalletSelectorModal';
 import HowItWorks from './components/HowItWorks';
+import DonateModal from './components/DonateModal';
 
 // Web3 Imports - EVM
 import '@rainbow-me/rainbowkit/styles.css';
@@ -47,6 +48,7 @@ const AppContent: React.FC = () => {
   const [refInput, setRefInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showDonateModal, setShowDonateModal] = useState(false);
   const [currentChain, setCurrentChain] = useState<ChainType>('evm');
 
   // EVM Hooks
@@ -387,6 +389,27 @@ const AppContent: React.FC = () => {
       {showAdmin && user && (
         <AdminPanel currentUser={user} onClose={() => setShowAdmin(false)} />
       )}
+
+      {/* Floating Donation Button */}
+      <div className="fixed bottom-32 left-8 z-[100] group">
+        <div className="absolute -inset-2 bg-primary/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <button
+          onClick={() => setShowDonateModal(true)}
+          onMouseEnter={() => setShowDonateModal(true)}
+          className="relative w-14 h-14 gradient-bg rounded-2xl flex items-center justify-center text-2xl shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/20"
+          title="Support Project"
+        >
+          💝
+          <span className="absolute left-full ml-4 bg-black/80 backdrop-blur-md px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10 pointer-events-none">
+            Support Project
+          </span>
+        </button>
+      </div>
+
+      <DonateModal
+        isOpen={showDonateModal}
+        onClose={() => setShowDonateModal(false)}
+      />
     </div>
   );
 };
