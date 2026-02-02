@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, StoreItem } from '../types';
 import { dbService } from '../services/database';
+import BuyGemsModal from './BuyGemsModal';
 
 interface StoreProps {
     user: User;
@@ -48,6 +49,7 @@ const ITEMS: StoreItem[] = [
 
 const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) => {
     const [purchasing, setPurchasing] = useState<string | null>(null);
+    const [showBuyGems, setShowBuyGems] = useState(false);
 
     const handlePurchase = async (item: StoreItem) => {
         if (user.points < item.price) {
@@ -91,14 +93,23 @@ const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) =>
 
     return (
         <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-10 duration-700 pb-32">
-            <header className="text-center space-y-4">
+            <header className="text-center space-y-4 relative">
                 <h2 className="text-6xl font-black text-glow tracking-tighter italic uppercase">Marketplace</h2>
                 <p className="text-gray-500 uppercase text-[10px] tracking-[0.6em] font-black">Exchange Value • Secure Assets</p>
 
-                <div className="inline-flex items-center gap-2 bg-white/5 px-6 py-2 rounded-full border border-white/10 mt-4">
-                    <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Balance:</span>
-                    <span className="text-primary font-mono font-black text-xl">{user.points.toLocaleString()}</span>
-                    <span className="text-xl">💎</span>
+                <div className="flex flex-col items-center gap-4 mt-8">
+                    <div className="inline-flex items-center gap-2 bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
+                        <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Balance:</span>
+                        <span className="text-primary font-mono font-black text-2xl">{user.points.toLocaleString()}</span>
+                        <span className="text-2xl">💎</span>
+                    </div>
+
+                    <button
+                        onClick={() => setShowBuyGems(true)}
+                        className="px-6 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-black uppercase tracking-widest hover:bg-emerald-500/20 transition-all flex items-center gap-2"
+                    >
+                        <span>+</span> Top Up GEMs
+                    </button>
                 </div>
             </header>
 
@@ -131,8 +142,8 @@ const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) =>
                                 onClick={() => handlePurchase(item)}
                                 disabled={user.points < item.price || purchasing === item.id}
                                 className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${user.points >= item.price
-                                        ? 'gradient-bg hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20'
-                                        : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                                    ? 'gradient-bg hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20'
+                                    : 'bg-white/5 text-gray-500 cursor-not-allowed'
                                     }`}
                             >
                                 {purchasing === item.id ? 'Processing...' : user.points < item.price ? 'Insufficient Funds' : 'Purchase Access'}
@@ -155,6 +166,17 @@ const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) =>
                         ))}
                     </div>
                 </div>
+            )}
+
+            {showBuyGems && (
+                <BuyGemsModal
+                    user={user}
+                    onClose={() => setShowBuyGems(false)}
+                    onPurchase={(amount) => {
+                        updatePoints(amount);
+                        // onUpdateUser handled by updatePoints mostly
+                    }}
+                />
             )}
         </div>
     );

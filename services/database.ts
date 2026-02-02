@@ -63,7 +63,7 @@ class DatabaseService {
     }
 
     // Generic Helpers
-    private async getTransaction(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
+    public async getTransaction(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
         await this.init();
         const transaction = this.db!.transaction(storeName, mode);
         return transaction.objectStore(storeName);

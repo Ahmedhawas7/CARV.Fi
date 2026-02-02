@@ -104,28 +104,54 @@ const Lottery: React.FC<LotteryProps> = ({ user, t, onUpdateUser }) => {
                     </div>
                 </div>
 
-                {/* Winners Feed */}
-                <div className="glass-card p-8 rounded-[40px] flex flex-col">
-                    <h3 className="text-2xl font-black uppercase italic mb-6 text-gray-300">Yesterday's Winners</h3>
-                    <div className="flex-1 overflow-y-auto space-y-3 max-h-[300px] scrollbar-thin scrollbar-thumb-white/10 pr-2">
-                        {lastWinners.length > 0 ? lastWinners.map((w, i) => (
-                            <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center text-xs font-bold text-black border-2 border-white">
-                                        #{i + 1}
+                <div className="space-y-8">
+                    {/* Winners Feed */}
+                    <div className="glass-card p-8 rounded-[40px] flex flex-col h-[300px]">
+                        <h3 className="text-2xl font-black uppercase italic mb-6 text-gray-300">Yesterday's Winners</h3>
+                        <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-white/10 pr-2">
+                            {lastWinners.length > 0 ? lastWinners.map((w, i) => (
+                                <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center text-xs font-bold text-black border-2 border-white">
+                                            #{i + 1}
+                                        </div>
+                                        <span className="font-mono text-sm text-gray-300">{w.wallet.slice(0, 6)}...</span>
                                     </div>
-                                    <span className="font-mono text-sm text-gray-300">{w.wallet.slice(0, 6)}...</span>
+                                    <span className="text-primary font-bold">+{w.amount}</span>
                                 </div>
-                                <span className="text-primary font-bold">+{w.amount}</span>
-                            </div>
-                        )) : (
-                            <div className="text-center py-10 text-gray-600 text-sm font-bold uppercase">No winners yet...</div>
-                        )}
+                            )) : (
+                                <div className="text-center py-10 text-gray-600 text-sm font-bold uppercase">No winners yet...</div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-white/5">
-                        <div className="text-xs text-center text-gray-500">
-                            Calculated automatically at 00:00 UTC
+                    {/* Live Participants Feed */}
+                    <div className="glass-card p-8 rounded-[40px] flex flex-col h-[300px]">
+                        <h3 className="text-2xl font-black uppercase italic mb-6 text-gray-300">Live Entries</h3>
+                        <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-white/10 pr-2">
+                            {dailyPool && dailyPool.participants && dailyPool.participants.length > 0 ? (
+                                Object.entries(dailyPool.participants.reduce((acc, wallet) => {
+                                    acc[wallet] = (acc[wallet] || 0) + 1;
+                                    return acc;
+                                }, {} as Record<string, number>))
+                                    .sort(([, a], [, b]) => b - a)
+                                    .map(([wallet, count], i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/30">
+                                                    👤
+                                                </div>
+                                                <span className="font-mono text-sm text-gray-300">{wallet.slice(0, 6)}...{wallet.slice(-4)}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 uppercase">Tickets</span>
+                                                <span className="text-white font-bold bg-white/10 px-2 py-0.5 roundedElement">{count}</span>
+                                            </div>
+                                        </div>
+                                    ))
+                            ) : (
+                                <div className="text-center py-10 text-gray-600 text-sm font-bold uppercase">No entries today yet...</div>
+                            )}
                         </div>
                     </div>
                 </div>
