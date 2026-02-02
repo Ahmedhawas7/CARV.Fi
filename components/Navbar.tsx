@@ -37,15 +37,15 @@ const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-3 sm:gap-6">
           {/* Chain Badge */}
           <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${currentChain === 'evm'
-              ? 'border-blue-500 text-blue-400 bg-blue-500/10'
-              : 'border-purple-500 text-purple-400 bg-purple-500/10'
+            ? 'border-blue-500 text-blue-400 bg-blue-500/10'
+            : 'border-purple-500 text-purple-400 bg-purple-500/10'
             }`}>
             {currentChain === 'evm' ? '🔵 BASE' : '🟣 SOLANA'}
           </div>
 
           {/* Balance Display */}
           {user.walletAddress && (
-            <BalanceDisplay chain={currentChain} userLevel={user.level} />
+            <BalanceDisplay chain={currentChain} userLevel={user.level} gemPoints={user.gemPoints} />
           )}
 
           {/* Wallet Address & Disconnect */}

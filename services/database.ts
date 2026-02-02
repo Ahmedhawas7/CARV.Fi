@@ -80,6 +80,15 @@ class DatabaseService {
         });
     }
 
+    async getAllUsers(): Promise<User[]> {
+        const store = await this.getTransaction(STORES.USERS);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
     async saveUser(user: User): Promise<void> {
         const store = await this.getTransaction(STORES.USERS, 'readwrite');
         return new Promise((resolve, reject) => {

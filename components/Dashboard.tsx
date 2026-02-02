@@ -74,6 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
           </div>
 
           <div className="flex gap-4">
+            <StatsCard title="Activity Score" value={(user.gemPoints || 0).toLocaleString()} icon="⭐" />
             <StatsCard title="GEMs Mined" value={user.points.toLocaleString()} icon="💎" />
             <StatsCard title="Daily Streak" value={`${user.streak} Days`} icon="🔥" />
           </div>

@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { User, StoreItem } from '../types';
 import { dbService } from '../services/database';
-import BuyGemsModal from './BuyGemsModal';
 
 interface StoreProps {
     user: User;
@@ -49,7 +48,6 @@ const ITEMS: StoreItem[] = [
 
 const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) => {
     const [purchasing, setPurchasing] = useState<string | null>(null);
-    const [showBuyGems, setShowBuyGems] = useState(false);
 
     const handlePurchase = async (item: StoreItem) => {
         if (user.points < item.price) {
@@ -103,13 +101,6 @@ const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) =>
                         <span className="text-primary font-mono font-black text-2xl">{user.points.toLocaleString()}</span>
                         <span className="text-2xl">💎</span>
                     </div>
-
-                    <button
-                        onClick={() => setShowBuyGems(true)}
-                        className="px-6 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-black uppercase tracking-widest hover:bg-emerald-500/20 transition-all flex items-center gap-2"
-                    >
-                        <span>+</span> Top Up GEMs
-                    </button>
                 </div>
             </header>
 
@@ -168,16 +159,6 @@ const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) =>
                 </div>
             )}
 
-            {showBuyGems && (
-                <BuyGemsModal
-                    user={user}
-                    onClose={() => setShowBuyGems(false)}
-                    onPurchase={(amount) => {
-                        updatePoints(amount);
-                        // onUpdateUser handled by updatePoints mostly
-                    }}
-                />
-            )}
         </div>
     );
 };

@@ -7,9 +7,10 @@ import { ChainType } from '../services/web3Config';
 interface BalanceDisplayProps {
     chain: ChainType;
     userLevel?: number;
+    gemPoints?: number;
 }
 
-const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ chain, userLevel = 1 }) => {
+const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ chain, userLevel = 1, gemPoints = 0 }) => {
     const [usdcBalance, setUsdcBalance] = useState('0.00');
     const [gemBalance, setGemBalance] = useState('0');
     const [ticketCount, setTicketCount] = useState(0);
@@ -64,10 +65,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ chain, userLevel = 1 })
                 <span className="text-sm font-mono font-bold text-white">{usdcBalance}</span>
             </div>
 
-            {/* GEM Balance */}
+            {/* Activity Score (GEM Points) */}
             <div className="flex items-center gap-2 border-r border-white/10 pr-4">
-                <span className="text-xs text-yellow-400 font-bold">💎</span>
-                <span className="text-sm font-mono font-bold text-white">{gemBalance}</span>
+                <span className="text-xs text-yellow-400 font-bold">⭐</span>
+                <span className="text-sm font-mono font-bold text-white">{gemPoints}</span>
             </div>
 
             {/* Tickets */}

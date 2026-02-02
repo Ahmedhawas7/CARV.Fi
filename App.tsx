@@ -13,6 +13,7 @@ import Store from './components/Store';
 import PremiumModal from './components/PremiumModal';
 import Lottery from './components/Lottery';
 import WalletSelectorModal from './components/WalletSelectorModal';
+import HowItWorks from './components/HowItWorks';
 
 // Web3 Imports - EVM
 import '@rainbow-me/rainbowkit/styles.css';
@@ -46,7 +47,7 @@ const wallets = useMemo(
 const AppContent: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile' | 'store' | 'lotto'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile' | 'store' | 'lotto' | 'how-it-works'>('tasks');
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -165,6 +166,7 @@ const AppContent: React.FC = () => {
         username: `Agent_${address.slice(0, 4)}`,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
         points: 0,
+        gemPoints: 0,
         streak: authService.getLoginStreak(),
         level: 1,
         lastCheckIn: null,
@@ -206,12 +208,13 @@ const AppContent: React.FC = () => {
     return 50 * Math.pow(user.level, 2);
   }, [user]);
 
-  const updatePoints = useCallback(async (amount: number) => {
+  const updatePoints = useCallback(async (amount: number, reason: string = 'Activity') => {
     setUser(prev => {
       if (!prev) return null;
       const newPoints = prev.points + amount;
+      const newGemPoints = (prev.gemPoints || 0) + (amount > 0 ? amount : 0); // Only positive changes affect activity score
       const newLevel = calculateLevel(newPoints);
-      const newUser = { ...prev, points: newPoints, level: newLevel };
+      const newUser = { ...prev, points: newPoints, gemPoints: newGemPoints, level: newLevel };
       dbService.saveUser(newUser).catch(console.error);
       return newUser;
     });
@@ -283,8 +286,13 @@ const AppContent: React.FC = () => {
             onCheckIn={() => {
               const today = new Date().toISOString().split('T')[0];
               if (user.lastCheckIn === today) return;
-              updatePoints(10);
-              const newUser = { ...user, streak: user.streak + 1, lastCheckIn: today };
+              updatePoints(10, 'Daily Check-in');
+              const newUser = {
+                ...user,
+                streak: user.streak + 1,
+                lastCheckIn: today,
+                gemPoints: (user.gemPoints || 0) + 10
+              };
               setUser(newUser);
               dbService.saveUser(newUser).catch(console.error);
             }}
@@ -327,12 +335,14 @@ const AppContent: React.FC = () => {
             onUpdateUser={(u) => setUser(u)}
           />
         )}
+        {activeTab === 'how-it-works' && <HowItWorks />}
       </main>
 
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card rounded-[40px] px-8 py-4 border border-white/10 shadow-2xl z-50 flex items-center gap-10">
         <NavBtn id="tasks" current={activeTab} onClick={setActiveTab} icon="💎" label={t.tasks} />
         <NavBtn id="store" current={activeTab} onClick={setActiveTab} icon="🛍️" label="Shop" />
         <NavBtn id="lotto" current={activeTab} onClick={setActiveTab} icon="🎰" label="Lotto" />
+        <NavBtn id="how-it-works" current={activeTab} onClick={setActiveTab} icon="📖" label={t.howItWorks} />
         <NavBtn id="chat" current={activeTab} onClick={setActiveTab} icon="🤖" label={t.chatWithAI} />
         <NavBtn id="leaderboard" current={activeTab} onClick={setActiveTab} icon="🏆" label={t.leaderboard} />
         <NavBtn id="profile" current={activeTab} onClick={setActiveTab} icon="👤" label={t.profile} />

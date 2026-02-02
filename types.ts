@@ -5,7 +5,8 @@ export interface User {
   walletAddress: string | null;
   username: string;
   avatar: string;
-  points: number;
+  points: number; // Spendable/Legacy?
+  gemPoints: number; // Activity/Non-spendable
   streak: number;
   level: number;
   lastCheckIn: string | null;
@@ -19,7 +20,6 @@ export interface User {
   referralCode: string;
   referredBy?: string;
   referralsCount: number;
-
 
   isNewUser?: boolean;
   email?: string;

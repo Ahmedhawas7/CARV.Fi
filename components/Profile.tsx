@@ -75,7 +75,18 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
     <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-10 duration-500 pb-32">
       <header className="text-center space-y-3">
         <h2 className="text-6xl font-black text-glow tracking-tighter italic uppercase">{t.profile}</h2>
-        <p className="text-gray-500 uppercase text-[10px] tracking-[0.6em] font-black">SVM Neural Synchronization</p>
+        <div className="flex justify-center gap-6 mt-2">
+          <div className="flex flex-col items-center">
+            <span className="text-primary font-mono font-black text-2xl">{user.gemPoints?.toLocaleString() || 0}</span>
+            <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{t.gemPoints}</span>
+          </div>
+          <div className="w-px h-10 bg-white/10"></div>
+          <div className="flex flex-col items-center">
+            <span className="text-white font-mono font-black text-2xl">{user.points.toLocaleString()}</span>
+            <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{t.points}</span>
+          </div>
+        </div>
+        <p className="text-gray-500 uppercase text-[10px] tracking-[0.6em] font-black mt-4">SVM Neural Synchronization</p>
       </header>
 
       {/* Referral Hub */}

@@ -4,23 +4,62 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+
   return {
     server: {
       port: 3000,
       host: '0.0.0.0',
     },
+
     plugins: [react()],
+
+    /**
+     * Environment variables
+     * Cleaner & safer way
+     */
     define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      'process.env': {
+        GEMINI_API_KEY: env.GEMINI_API_KEY,
+      },
     },
+
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
-      }
+      },
     },
+
+    /**
+     * Build optimizations
+     */
     build: {
       chunkSizeWarningLimit: 1600,
-    }
+
+      rollupOptions: {
+        output: {
+          /**
+           * Manual chunk splitting
+           * Improves loading performance significantly
+           */
+          manualChunks: {
+            // React core
+            react: ['react', 'react-dom'],
+
+            // Wallets & Web3
+            wallets: [
+              '@solana/wallet-adapter-react',
+              '@solana/wallet-adapter-wallets',
+              '@rainbow-me/rainbowkit',
+            ],
+
+            // Solana core
+            solana: ['@solana/web3.js'],
+
+            // EVM core
+            evm: ['viem', 'wagmi'],
+          },
+        },
+      },
+    },
   };
 });

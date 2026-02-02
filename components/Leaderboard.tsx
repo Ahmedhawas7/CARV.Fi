@@ -18,9 +18,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ t }) => {
   const loadLeaderboard = async () => {
     try {
       const allUsers = await dbService.getAllUsers();
-      // Sort by points descending
+      // Sort by gemPoints descending, fallback to points
       const sorted = allUsers
-        .sort((a, b) => b.points - a.points)
+        .sort((a, b) => (b.gemPoints || 0) - (a.gemPoints || 0) || b.points - a.points)
         .slice(0, 10); // Top 10
       setLeaders(sorted);
     } catch (e) {
@@ -80,8 +80,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ t }) => {
                 </div>
               </div>
               <div className="text-right relative z-10">
-                <p className="text-3xl font-mono font-black text-glow tracking-tighter">{user.points.toLocaleString()}</p>
-                <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">{t.points}</p>
+                <p className="text-3xl font-mono font-black text-glow tracking-tighter">{(user.gemPoints || 0).toLocaleString()}</p>
+                <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">{t.gemPoints}</p>
               </div>
             </div>
           ))

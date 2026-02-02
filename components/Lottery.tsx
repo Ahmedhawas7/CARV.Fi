@@ -4,6 +4,8 @@ import { User } from '../types'; // Keep User type for prop compatibility for no
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { LOTTERY_ABI } from '../services/abis';
 import { formatUnits, parseUnits } from 'viem';
+import BuyTicketModal from './BuyTicketModal';
+import { ChainType } from '../services/web3Config';
 
 // Address would come from env in real prod
 const LOTTERY_CONTRACT = "0x1234567890123456789012345678901234567890";
@@ -29,7 +31,11 @@ const Lottery: React.FC<LotteryProps> = ({ user, t, onUpdateUser }) => {
 
     // For demo purposes, we might still fallback to local state if contract read fails 
     // (since contract isn't actually deployed on the user's localhost chain usually)
+    const [showBuyModal, setShowBuyModal] = useState(false);
     const [displayJackpot, setDisplayJackpot] = useState("0");
+
+    // Placeholder USDC balance for demo (should be fetched from on-chain in real prod)
+    const usdcBalance = 10.50;
 
     useEffect(() => {
         if (jackpotData) {
@@ -37,20 +43,22 @@ const Lottery: React.FC<LotteryProps> = ({ user, t, onUpdateUser }) => {
         }
     }, [jackpotData]);
 
-    const handleBuyTicketChain = async () => {
-        if (!isConnected) return alert("Connect Wallet!");
+    const handlePurchaseComplete = async (count: number) => {
+        // Award points: 100 GEM Points per 1 USDC spent
+        const pointsAwarded = count * 100;
 
-        try {
-            writeContract({
-                address: LOTTERY_CONTRACT,
-                abi: LOTTERY_ABI,
-                functionName: 'buyTickets',
-                args: [BigInt(1)]
-            });
-        } catch (e) {
-            console.error(e);
-        }
+        onUpdateUser({
+            ...user,
+            gemPoints: (user.gemPoints || 0) + pointsAwarded,
+            dailyTicketCount: (user.dailyTicketCount || 0) + count,
+            lastTicketDate: new Date().toISOString().split('T')[0]
+        });
+
+        alert(`Successfully purchased ${count} tickets! Received ${pointsAwarded} GEM Points.`);
+        setShowBuyModal(false);
     };
+
+    const currentChain: ChainType = address?.startsWith('0x') ? 'evm' : 'solana'; // Simple check
 
     return (
         <div className="max-w-4xl mx-auto space-y-10 pb-32 animate-in fade-in">
@@ -80,19 +88,24 @@ const Lottery: React.FC<LotteryProps> = ({ user, t, onUpdateUser }) => {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-gray-400">1 Ticket = 1000 GEMs</p>
+                        <p className="text-gray-400">1 Ticket = 1 USDC</p>
                         <button
-                            onClick={handleBuyTicketChain}
-                            disabled={isWritePending}
-                            className="w-full max-w-md mx-auto py-4 bg-gradient-to-r from-green-500 to-emerald-700 rounded-xl font-black uppercase text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-[1.05] transition-all"
+                            onClick={() => setShowBuyModal(true)}
+                            className="w-full max-w-md mx-auto py-5 gradient-bg rounded-2xl font-black uppercase text-white shadow-[0_0_30px_rgba(168,85,247,0.3)] hover:scale-[1.05] transition-all text-xl"
                         >
-                            {isWritePending ? "Confirming..." : "Buy 1 Ticket On-Chain"}
+                            Buy Tickets Now
                         </button>
-                        {hash && <p className="text-xs text-green-400 font-mono">Tx: {hash}</p>}
-                        {writeError && <p className="text-xs text-red-400 font-mono">{writeError.message}</p>}
                     </div>
                 )}
             </div>
+
+            <BuyTicketModal
+                isOpen={showBuyModal}
+                onClose={() => setShowBuyModal(false)}
+                onPurchase={handlePurchaseComplete}
+                currentChain={currentChain}
+                usdcBalance={usdcBalance}
+            />
 
             <div className="text-center text-gray-500 text-xs mt-10">
                 <p>Note: You must deploy the contracts to Base and update `LOTTERY_CONTRACT` in the code.</p>
