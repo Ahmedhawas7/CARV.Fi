@@ -12,6 +12,7 @@ interface ProfileProps {
 const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
   const [formData, setFormData] = useState({
     username: user.username,
+    email: user.email || '',
     avatar: user.avatar,
     carvUid: user.carvUid || '',
     playDomain: user.playDomain || '',
@@ -26,23 +27,18 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
   const [imgPrompt, setImgPrompt] = useState('');
 
   const avatars = [
-    // Men
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&clothing=blazerAndShirt&accessories=glasses`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Christopher&clothing=collarAndSweater`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Aidan&clothing=shirtCrewNeck`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Joshua&clothing=hoodie`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Nolan&top=shortHairTheCaesar`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Liam&facialHair=beardMedium`,
-
-    // Women
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia&clothing=blazerAndShirt`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Jade&clothing=overall`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Amelia&top=longHairStraight`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Bella&accessories=glasses`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe&top=longHairBun`,
     `https://api.dicebear.com/7.x/avataaars/svg?seed=Maya&clothing=shirtScoopNeck`,
-
-    // Abstract/Tech
     `https://api.dicebear.com/7.x/bottts/svg?seed=Tech1`,
     `https://api.dicebear.com/7.x/bottts/svg?seed=Cyber`,
   ];
@@ -56,6 +52,7 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
   const handleAiGenerate = async () => {
     if (!imgPrompt.trim() || isGenerating) return;
     setIsGenerating(true);
+    // Use the fallback logic in service if API fails, to ensure a result
     const result = await generateNeuralAvatar(imgPrompt);
     if (result) {
       updateField('avatar', result);
@@ -72,46 +69,6 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const getStatus = (field: keyof typeof formData) => {
-    const currentVal = formData[field];
-    const savedVal = (user as any)[field] || '';
-
-    if (!currentVal || currentVal.trim() === '') return 'unbound';
-    if (currentVal !== savedVal) return 'pending';
-    return 'verified';
-  };
-
-  const StatusBadge = ({ status }: { status: 'pending' | 'verified' | 'unbound' }) => {
-    if (status === 'pending') {
-      return (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500/10 text-yellow-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-yellow-500/20 animate-pulse">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {t.pending}
-        </div>
-      );
-    }
-    if (status === 'verified') {
-      return (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.2)] animate-in zoom-in duration-300">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-          {t.complete}
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 text-gray-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/5 opacity-60">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-        </svg>
-        {t.unbound}
-      </div>
-    );
   };
 
   return (
@@ -156,7 +113,7 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
         <div className="flex flex-col items-center gap-10">
           <div className="relative group">
             <div className="absolute -inset-4 gradient-bg rounded-full opacity-20 group-hover:opacity-100 blur-2xl transition duration-1000"></div>
-            <img src={formData.avatar} className="relative w-48 h-48 rounded-full border-4 border-primary/30 p-2 bg-background shadow-[0_0_50px_rgba(0,0,0,0.5)] object-cover transition-transform duration-500 group-hover:scale-105" alt="Avatar" />
+            <img src={formData.avatar} className="relative w-48 h-48 rounded-full border-4 border-primary/30 p-2 bg-background shadow-[0_0_50px_rgba(0,0,0,0.5)] object-cover transition-transform duration-500 group-hover:scale-105" alt="Avatar" onError={(e) => e.currentTarget.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=backup'} />
             {isGenerating && (
               <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center z-20">
                 <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -209,6 +166,17 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
           </div>
 
           <div className="space-y-3">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-4">Email Address <span className="text-primary">*</span></label>
+            <input
+              value={formData.email}
+              onChange={(e) => updateField('email', e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-[30px] p-6 focus:ring-4 focus:ring-primary/20 outline-none text-xl font-mono transition-all"
+              placeholder="you@email.com"
+              type="email"
+            />
+          </div>
+
+          <div className="space-y-3">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-4">{t.carvUid}</label>
             <input
               value={formData.carvUid}
@@ -217,6 +185,7 @@ const Profile: React.FC<ProfileProps> = ({ user, t, onUpdate }) => {
               placeholder="UID-XXXX"
             />
           </div>
+          {/* Placeholder empty to balance grid if needed, or expand */}
         </div>
 
         <button

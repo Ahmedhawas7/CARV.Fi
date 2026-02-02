@@ -19,8 +19,11 @@ export interface User {
   referralCode: string;
   referredBy?: string;
   referralsCount: number;
+
   isNewUser?: boolean;
+  email?: string;
 }
+
 
 export type TaskType = 'social' | 'daily' | 'referral' | 'youtube';
 export type TaskPlatform = 'twitter' | 'discord' | 'youtube' | 'telegram' | 'website';
