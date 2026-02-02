@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Language, User } from './types';
 import { translations } from './translations';
@@ -13,16 +12,37 @@ import AdminPanel from './components/AdminPanel';
 import Store from './components/Store';
 import PremiumModal from './components/PremiumModal';
 import Lottery from './components/Lottery';
+import WalletSelectorModal from './components/WalletSelectorModal';
 
-// Web3 Imports
+// Web3 Imports - EVM
 import '@rainbow-me/rainbowkit/styles.css';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { WagmiProvider, useAccount, useSignMessage } from 'wagmi';
+import { WagmiProvider, useAccount, useSignMessage, useConnect, useDisconnect } from 'wagmi';
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { config } from './services/web3Config';
+import { config, ChainType } from './services/web3Config';
+
+// Web3 Imports - Solana
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { ConnectionProvider, WalletProvider, useWallet } from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter, BackpackWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { clusterApiUrl } from '@solana/web3.js';
+import '@solana/wallet-adapter-react-ui/styles.css';
+
 import { authService } from './services/authService';
 
 const queryClient = new QueryClient();
+
+// Solana configuration
+const network = WalletAdapterNetwork.Mainnet;
+const endpoint = useMemo(() => clusterApiUrl(network), []);
+const wallets = useMemo(
+  () => [
+    new PhantomWalletAdapter(),
+    new BackpackWalletAdapter(),
+  ],
+  []
+);
 
 const AppContent: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
@@ -30,13 +50,20 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tasks' | 'leaderboard' | 'chat' | 'profile' | 'store' | 'lotto'>('tasks');
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [refInput, setRefInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [currentChain, setCurrentChain] = useState<ChainType>('evm');
 
-  // Wagmi Hook
-  const { address: web3Address, isConnected: isWeb3Connected } = useAccount();
-  const { signMessageAsync } = useSignMessage();
+  // EVM Hooks
+  const { address: evmAddress } = useAccount();
+  const { signMessageAsync: signEvmMessage } = useSignMessage();
+  const { connect: connectEvm, connectors } = useConnect();
+  const { disconnect: disconnectEvm } = useDisconnect();
+
+  // Solana Hooks
+  const { publicKey: solanaAddress, signMessage: signSolanaMessage, select: selectSolanaWallet, disconnect: disconnectSolana } = useWallet();
 
   const t = translations[lang];
 
@@ -48,17 +75,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // Initialize DB on mount
     dbService.init().catch(console.error);
-
-    // Initial Lottery Check (Lazy Trigger)
     lotteryService.checkAndRunDraws().catch(console.error);
-
-    // Check Session & Restore User
-    const session = authService.getSession();
-    if (session) {
-      dbService.getUser(session.address).then(u => {
-        if (u) setUser(u);
-      });
-    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
@@ -67,28 +84,118 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  // Sync Web3 Auth
-  useEffect(() => {
-    const handleAuth = async () => {
-      // If wallet connected but user not logged in OR address mismatch
-      if (web3Address) {
-        const session = authService.getSession();
-        if (session && session.address === web3Address) {
-          // Already authenticated locally, ensure user loaded
-          if (!user) {
-            const u = await dbService.getUser(web3Address);
-            if (u) setUser(u);
-          }
-          return;
+  // Handle wallet connection and authentication
+  const handleWalletSelect = async (walletId: string, chain: ChainType) => {
+    setShowWalletModal(false);
+    setIsConnecting(true);
+    setCurrentChain(chain);
+
+    try {
+      if (chain === 'evm') {
+        // Connect EVM wallet
+        const connector = connectors.find(c => c.id === walletId);
+        if (connector) {
+          await connectEvm({ connector });
+          // Wait for address to be available
+          setTimeout(() => authenticateWallet(chain), 1000);
         }
-        // Not authenticated (no session) or wallet changed
-        if (!user || user.walletAddress !== web3Address) {
-          connectWallet(web3Address);
-        }
+      } else {
+        // Connect Solana wallet
+        selectSolanaWallet(walletId);
+        // Wait for publicKey to be available
+        setTimeout(() => authenticateWallet(chain), 1000);
       }
-    };
-    handleAuth();
-  }, [web3Address, user]);
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      setIsConnecting(false);
+    }
+  };
+
+  const authenticateWallet = async (chain: ChainType) => {
+    try {
+      const address = chain === 'evm' ? evmAddress : solanaAddress?.toBase58();
+      if (!address) {
+        console.error('No address available');
+        setIsConnecting(false);
+        return;
+      }
+
+      // Check for existing session
+      const existingSession = await authService.restoreSession(address, chain);
+      if (existingSession) {
+        await loadUserProfile(address);
+        setIsConnecting(false);
+        return;
+      }
+
+      // Request signature for authentication
+      const message = authService.generateAuthMessage(address, chain);
+      let signature: string;
+
+      if (chain === 'evm') {
+        signature = await signEvmMessage({
+          message,
+          account: address as `0x${string}`,
+        });
+      } else {
+        if (!signSolanaMessage) {
+          throw new Error('Solana wallet does not support message signing');
+        }
+        const encodedMessage = new TextEncoder().encode(message);
+        const signedMessage = await signSolanaMessage(encodedMessage);
+        signature = Buffer.from(signedMessage).toString('base64');
+      }
+
+      // Save session
+      await authService.login(address, chain, signature);
+      await loadUserProfile(address);
+      setIsConnecting(false);
+    } catch (error) {
+      console.error('Authentication error:', error);
+      setIsConnecting(false);
+    }
+  };
+
+  const loadUserProfile = async (address: string) => {
+    let profile = await dbService.getUser(address);
+
+    if (!profile) {
+      const generateRefCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+      profile = {
+        walletAddress: address,
+        username: `Agent_${address.slice(0, 4)}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+        points: 0,
+        streak: authService.getLoginStreak(),
+        level: 1,
+        lastCheckIn: null,
+        tasksCompleted: [],
+        referralCode: generateRefCode(),
+        referralsCount: 0,
+        isNewUser: true,
+      };
+      await dbService.saveUser(profile);
+      setShowReferralModal(true);
+    } else {
+      profile.streak = authService.getLoginStreak();
+    }
+
+    setUser(profile);
+  };
+
+  const handleDisconnect = async () => {
+    if (user) {
+      await authService.logout(user.walletAddress, currentChain);
+    }
+
+    if (currentChain === 'evm') {
+      disconnectEvm();
+    } else {
+      disconnectSolana();
+    }
+
+    setUser(null);
+  };
 
   const calculateLevel = (points: number) => {
     const lvl = Math.floor(Math.sqrt(points / 50)) + 1;
@@ -106,85 +213,15 @@ const AppContent: React.FC = () => {
       const newPoints = prev.points + amount;
       const newLevel = calculateLevel(newPoints);
       const newUser = { ...prev, points: newPoints, level: newLevel };
-
-      // Async update DB
       dbService.saveUser(newUser).catch(console.error);
-
       return newUser;
     });
   }, []);
-
-  const connectWallet = async (forcedAddress?: string) => {
-    if (isConnecting) return;
-    setIsConnecting(true);
-
-    try {
-      let address = forcedAddress;
-
-      // Ensure address is present (triggered by Wagmi effect)
-      if (!address) {
-        setIsConnecting(false);
-        return;
-      }
-
-      // SIGNATURE AUTHENTICATION
-      // Check if we already have a valid session for this address
-      const validSession = authService.getSession();
-
-      if (!validSession || validSession.address !== address) {
-        const timestamp = Date.now();
-        const msg = `Sign to authenticate with CARVFi\nWallet: ${address}\nTimestamp: ${timestamp}`;
-
-        try {
-          const signature = await signMessageAsync({
-            message: msg,
-            account: address as `0x${string}`
-          });
-          authService.login(address, signature);
-        } catch (e) {
-          console.warn("User reject sig", e);
-          setIsConnecting(false);
-          return;
-        }
-      }
-
-      // Step 3: Fetch/Create Profile from DB
-      let profile = await dbService.getUser(address);
-
-      if (!profile) {
-        // Create new user if not found
-        const generateRefCode = () => Math.floor(100000 + Math.random() * 900000).toString();
-        profile = {
-          walletAddress: address,
-          username: `Agent_${address.slice(0, 4)}`,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
-          points: 0,
-          streak: 0,
-          level: 1,
-          lastCheckIn: null,
-          tasksCompleted: [],
-          referralCode: generateRefCode(),
-          referralsCount: 0,
-          isNewUser: true
-        };
-        await dbService.saveUser(profile);
-        setShowReferralModal(true);
-      }
-
-      setUser(profile);
-
-    } catch (err: any) {
-      console.error("Wallet Error:", err);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
   const handleReferralSubmit = async (isSkip = false) => {
     if (!user) return;
     let bonus = (!isSkip && refInput.length === 6) ? 300 : 0;
     const updatedUser = { ...user, isNewUser: false, points: user.points + bonus, level: calculateLevel(user.points + bonus) };
-
     await dbService.saveUser(updatedUser);
     setUser(updatedUser);
     setShowReferralModal(false);
@@ -203,29 +240,42 @@ const AppContent: React.FC = () => {
             <p className="text-gray-400 text-lg max-w-md mx-auto">{t.landingDesc}</p>
           </div>
           <div className="space-y-6 relative z-10">
-            {/* Custom Connect Button logic handled by Navbar or direct Wagmi usage */}
             <button
-              onClick={() => connectWallet(web3Address)}
+              onClick={() => setShowWalletModal(true)}
               disabled={isConnecting}
               className="w-full gradient-bg py-7 rounded-[30px] font-black text-2xl hover:scale-[1.05] active:scale-95 transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 group disabled:opacity-50"
             >
-              {/* Simplified for demo: merges solana/evm flow */}
-              {isConnecting ? "Connecting..." : t.connectWallet}
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
             </button>
             <div className="flex justify-center gap-6 pt-6 border-t border-white/5">
               <button onClick={() => setLang('ar')} className={`text-sm font-black uppercase tracking-widest ${lang === 'ar' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>العربية</button>
               <button onClick={() => setLang('en')} className={`text-sm font-black uppercase tracking-widest ${lang === 'en' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>English</button>
             </div>
           </div>
-          <p className="text-[10px] text-gray-700 font-bold uppercase tracking-[0.4em]">Integrated with CARV Protocol API v2.0</p>
+          <p className="text-[10px] text-gray-700 font-bold uppercase tracking-[0.4em]">Multi-Chain Powered by CARV Protocol</p>
         </div>
+
+        <WalletSelectorModal
+          isOpen={showWalletModal}
+          onClose={() => setShowWalletModal(false)}
+          onSelectWallet={handleWalletSelect}
+        />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex flex-col relative z-10">
-      <Navbar lang={lang} setLang={setLang} user={user} onConnect={() => connectWallet(web3Address)} t={t} onOpenPremium={() => setShowPremiumModal(true)} />
+      <Navbar
+        lang={lang}
+        setLang={setLang}
+        user={user}
+        onConnect={() => setShowWalletModal(true)}
+        onDisconnect={handleDisconnect}
+        currentChain={currentChain}
+        t={t}
+        onOpenPremium={() => setShowPremiumModal(true)}
+      />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700 pb-32">
         {activeTab === 'tasks' && (
           <Dashboard
@@ -322,7 +372,6 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      {/* Admin Floating Button */}
       {user && (
         <button
           onClick={() => setShowAdmin(true)}
@@ -333,7 +382,6 @@ const AppContent: React.FC = () => {
         </button>
       )}
 
-      {/* Admin Panel Overlay */}
       {showAdmin && user && (
         <AdminPanel currentUser={user} onClose={() => setShowAdmin(false)} />
       )}
@@ -343,13 +391,19 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          <AppContent />
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect={false}>
+        <WalletModalProvider>
+          <WagmiProvider config={config}>
+            <QueryClientProvider client={queryClient}>
+              <RainbowKitProvider>
+                <AppContent />
+              </RainbowKitProvider>
+            </QueryClientProvider>
+          </WagmiProvider>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
   );
 };
 
