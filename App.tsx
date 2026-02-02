@@ -36,13 +36,6 @@ const queryClient = new QueryClient();
 
 // Solana configuration
 const network = WalletAdapterNetwork.Mainnet;
-const endpoint = useMemo(() => clusterApiUrl(network), []);
-const wallets = useMemo(
-  () => [
-    new PhantomWalletAdapter(),
-  ],
-  []
-);
 
 const AppContent: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
@@ -399,6 +392,14 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const endpoint = useMemo(() => clusterApiUrl(network), []);
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+    ],
+    []
+  );
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect={false}>
