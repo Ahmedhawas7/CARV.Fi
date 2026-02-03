@@ -1,7 +1,8 @@
 
 import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
+import { User } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || "" });
 
 const grantPointsDeclaration: FunctionDeclaration = {
   name: 'grantPoints',
@@ -26,20 +27,25 @@ export const handleAiChatStream = async (
   userMessage: string,
   lang: 'ar' | 'en',
   onChunk: (text: string) => void,
-  onGrantPoints: (amt: number) => void
+  onGrantPoints: (amt: number) => void,
+  userContext?: User
 ) => {
   try {
+    const contextStr = userContext ? `
+    USER INFO: Level ${userContext.level}, GEMs: ${userContext.points}, Streak: ${userContext.streak}.
+    Address: ${userContext.walletAddress?.slice(0, 6)}...
+    ` : "";
 
     const responseStream = await ai.models.generateContentStream({
       model: "gemini-2.0-flash-exp",
       contents: userMessage,
       config: {
-        systemInstruction: `You are CARVFi AI Oracle. You can reward users with points (10-50) using the grantPoints tool if they:
+        systemInstruction: `You are CARVFi AI Oracle. ${contextStr} You can reward users with points (10-50) using the grantPoints tool if they:
         1. Answer a riddle you provide.
         2. Suggest a cool Web3 feature.
         3. Show deep understanding of CARVFi.
         Language: ${lang === 'ar' ? 'Arabic' : 'English'}.
-        Tone: Playful, professional, cybernetic.`,
+        Tone: Playful, professional, cybernetic. Mention their level/stats occasionally.`,
         tools: [{ functionDeclarations: [grantPointsDeclaration] }],
       },
     });

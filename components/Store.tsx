@@ -8,6 +8,7 @@ interface StoreProps {
     t: any;
     updatePoints: (amount: number) => void;
     onUpdateUser: (fields: Partial<User>) => void;
+    onOpenMysteryBox: () => void;
 }
 
 const ITEMS: StoreItem[] = [
@@ -43,10 +44,18 @@ const ITEMS: StoreItem[] = [
         image: '📝',
         type: 'digital',
         stock: 10
+    },
+    {
+        id: 'mystery_box_gem',
+        name: 'Mystery Box',
+        description: 'Open to win GEM Points or Lotto Tickets. High risk, high reward!',
+        price: 200,
+        image: '🎁',
+        type: 'boost'
     }
 ];
 
-const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) => {
+const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser, onOpenMysteryBox }) => {
     const [purchasing, setPurchasing] = useState<string | null>(null);
 
     const handlePurchase = async (item: StoreItem) => {
@@ -62,6 +71,15 @@ const Store: React.FC<StoreProps> = ({ user, t, updatePoints, onUpdateUser }) =>
         try {
             // 1. Deduct Points
             const newPoints = user.points - item.price;
+
+            if (item.id === 'mystery_box_gem') {
+                // Mystery Box handling
+                const updatedUser = { ...user, points: newPoints };
+                await dbService.saveUser(updatedUser);
+                updatePoints(-item.price);
+                onOpenMysteryBox();
+                return;
+            }
 
             // 2. Add to Inventory
             const newItem = {

@@ -2,7 +2,7 @@
 import { User, TaskConfig, UserTaskProgress } from '../types';
 
 const DB_NAME = 'CarvFi_DB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORES = {
     USERS: 'users',
@@ -38,7 +38,8 @@ class DatabaseService {
 
                 // Users Store
                 if (!db.objectStoreNames.contains(STORES.USERS)) {
-                    db.createObjectStore(STORES.USERS, { keyPath: 'walletAddress' });
+                    const userStore = db.createObjectStore(STORES.USERS, { keyPath: 'walletAddress' });
+                    userStore.createIndex('referralCode', 'referralCode', { unique: true });
                 }
 
                 // Tasks Store
@@ -85,6 +86,16 @@ class DatabaseService {
         return new Promise((resolve, reject) => {
             const request = store.getAll();
             request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getUserByReferralCode(code: string): Promise<User | null> {
+        const store = await this.getTransaction(STORES.USERS);
+        const index = store.index('referralCode');
+        return new Promise((resolve, reject) => {
+            const request = index.get(code);
+            request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => reject(request.error);
         });
     }

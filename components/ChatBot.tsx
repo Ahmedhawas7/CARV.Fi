@@ -1,18 +1,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message } from '../types';
+import { Message, User } from '../types';
 import { handleAiChatStream } from '../services/gemini';
 
 interface ChatBotProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  user: User;
   lang: 'ar' | 'en';
   t: any;
   updatePoints: (amt: number) => void;
   isStandalone?: boolean;
 }
 
-const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, lang, t, updatePoints, isStandalone }) => {
+const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, user, lang, t, updatePoints, isStandalone }) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: t.aiGreeting, timestamp: Date.now() }
   ]);
@@ -51,7 +52,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, lang, t, updatePoi
           return newMessages;
         });
       },
-      updatePoints
+      updatePoints,
+      user
     );
 
     setIsTyping(false);
@@ -81,8 +83,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, lang, t, updatePoi
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
             <div className={`max-w-[85%] p-6 rounded-[35px] relative ${m.role === 'user'
-                ? 'bg-gradient-to-br from-primary to-purple-900 text-white rounded-tr-sm shadow-xl shadow-primary/10'
-                : 'bg-[#111] border border-white/10 text-gray-200 rounded-tl-sm shadow-lg'
+              ? 'bg-gradient-to-br from-primary to-purple-900 text-white rounded-tr-sm shadow-xl shadow-primary/10'
+              : 'bg-[#111] border border-white/10 text-gray-200 rounded-tl-sm shadow-lg'
               }`}>
               <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{m.content || '...'}</p>
               <p className="text-[9px] mt-3 opacity-40 text-right uppercase tracking-widest font-black text-white/50">

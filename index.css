@@ -4,3 +4,34 @@
   padding: 0;
   box-sizing: border-box;
 }
+
+:root {
+  --primary: 168 85 247;
+  --primary-glow: rgba(168, 85, 247, 0.4);
+}
+
+:root[data-theme="gold"] {
+  --primary: 234 179 8;
+  --primary-glow: rgba(234, 179, 8, 0.5);
+}
+
+:root[data-theme="neural"] {
+  --primary: 244 63 94;
+  --primary-glow: rgba(244, 63, 94, 0.6);
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, rgb(var(--primary)), #6366f1);
+}
+
+:root[data-theme="gold"] .gradient-bg {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b, #d97706);
+}
+
+:root[data-theme="neural"] .gradient-bg {
+  background: linear-gradient(135deg, #f43f5e, #881337, #4c0519);
+}
+
+.text-glow {
+  text-shadow: 0 0 20px var(--primary-glow);
+}

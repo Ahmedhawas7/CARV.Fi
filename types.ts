@@ -24,6 +24,7 @@ export interface User {
   isNewUser?: boolean;
   email?: string;
   isPremium?: boolean;
+  unclaimedReferralPoints?: number; // Accumulated passive points
   inventory?: InventoryItem[];
   dailyTicketCount?: number;
   lastTicketDate?: string; // YYYY-MM-DD

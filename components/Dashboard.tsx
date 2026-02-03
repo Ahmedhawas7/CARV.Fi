@@ -1,27 +1,36 @@
-
 import React, { useState, useEffect } from 'react';
-import { User, TaskConfig } from '../types';
+import { User, TaskConfig, Language } from '../types';
 import TaskCard from './TaskCard';
 import StatsCard from './StatsCard';
+import AIInsightCard from './AIInsightCard';
 import { taskService } from '../services/taskService';
 
 interface DashboardProps {
   user: User;
   t: any;
+  lang: Language;
   onCheckIn: () => void;
   updatePoints: (amount: number) => void;
   nextLevelPoints: number | null;
   checkInReward: number;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints, nextLevelPoints, checkInReward }) => {
+const Dashboard: React.FC<DashboardProps> = ({
+  user,
+  t,
+  lang,
+  onCheckIn,
+  updatePoints,
+  nextLevelPoints,
+  checkInReward
+}) => {
   const [tasks, setTasks] = useState<{ task: TaskConfig, status: 'pending' | 'completed' | 'ready_to_claim' }[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'daily' | 'social'>('all');
 
   useEffect(() => {
     loadTasks();
-  }, [user.walletAddress]); // Reload when user changes
+  }, [user.walletAddress]);
 
   const loadTasks = async () => {
     if (!user.walletAddress) return;
@@ -37,8 +46,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
   };
 
   const handleTaskCompletion = (points: number) => {
-    updatePoints(points); // Update global app state
-    loadTasks(); // Refresh local list
+    updatePoints(points);
+    loadTasks();
   };
 
   const filteredTasks = tasks.filter(item => {
@@ -48,6 +57,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+
+      {/* AI AIInsightCard */}
+      <AIInsightCard user={user} lang={lang} />
 
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-[40px] glass-card p-8 border border-primary/20 bg-primary/5 group">
@@ -62,7 +74,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
               <div className={`absolute -bottom-2 -right-2 px-3 py-1 rounded-full border text-xs font-black uppercase ${user.isPremium ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-black border-primary text-primary'}`}>
                 {user.isPremium ? 'ELITE' : `Lv. ${user.level}`}
               </div>
-
             </div>
             <div>
               <h2 className="text-3xl font-black italic tracking-tighter uppercase">{user.username}</h2>
@@ -74,9 +85,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
           </div>
 
           <div className="flex gap-4">
-            <StatsCard title="Activity Score" value={(user.gemPoints || 0).toLocaleString()} icon="⭐" />
-            <StatsCard title="GEMs Mined" value={user.points.toLocaleString()} icon="💎" />
-            <StatsCard title="Daily Streak" value={`${user.streak} Days`} icon="🔥" />
+            <StatsCard title="Activity" value={(user.gemPoints || 0).toLocaleString()} icon="⭐" />
+            <StatsCard title="GEMs" value={user.points.toLocaleString()} icon="💎" />
+            <StatsCard title="Streak" value={`${user.streak} Days`} icon="🔥" />
           </div>
         </div>
 
@@ -88,7 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, t, onCheckIn, updatePoints,
           </div>
           <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
             <div
-              className="h-full bg-gradient-to-r from-primary to-indigo-500 transition-all duration-1000 ease-out relative"
+              className={`h-full bg-gradient-to-r ${user.level >= 50 ? 'from-yellow-400 via-orange-500 to-red-500' : 'from-primary to-indigo-500'} transition-all duration-1000 ease-out relative`}
               style={{ width: `${Math.min(100, (user.points % 100))}%` }}
             >
               <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>

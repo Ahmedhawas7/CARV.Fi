@@ -15,6 +15,7 @@ import Lottery from './components/Lottery';
 import WalletSelectorModal from './components/WalletSelectorModal';
 import HowItWorks from './components/HowItWorks';
 import DonateModal from './components/DonateModal';
+import MysteryBoxModal from './components/MysteryBoxModal';
 
 // Web3 Imports - EVM
 import '@rainbow-me/rainbowkit/styles.css';
@@ -49,6 +50,7 @@ const AppContent: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(false);
+  const [showMysteryBox, setShowMysteryBox] = useState(false);
   const [currentChain, setCurrentChain] = useState<ChainType>('evm');
 
   // EVM Hooks
@@ -105,6 +107,13 @@ const AppContent: React.FC = () => {
       setIsConnecting(false);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      const theme = user.level >= 50 ? 'neural' : user.level >= 25 ? 'gold' : 'default';
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  }, [user?.level]);
 
   const authenticateWallet = async (chain: ChainType) => {
     try {
@@ -210,6 +219,23 @@ const AppContent: React.FC = () => {
       const newGemPoints = (prev.gemPoints || 0) + (amount > 0 ? amount : 0); // Only positive changes affect activity score
       const newLevel = calculateLevel(newPoints);
       const newUser = { ...prev, points: newPoints, gemPoints: newGemPoints, level: newLevel };
+
+      // Handle passive referral bonus
+      if (amount > 0 && prev.referredBy) {
+        dbService.getUser(prev.referredBy).then(referrer => {
+          if (referrer) {
+            const bonus = Math.max(1, Math.floor(amount * 0.05));
+            const updatedReferrer = {
+              ...referrer,
+              points: referrer.points + bonus,
+              gemPoints: (referrer.gemPoints || 0) + bonus,
+              level: calculateLevel(referrer.points + bonus)
+            };
+            dbService.saveUser(updatedReferrer).catch(console.error);
+          }
+        }).catch(console.error);
+      }
+
       dbService.saveUser(newUser).catch(console.error);
       return newUser;
     });
@@ -217,8 +243,33 @@ const AppContent: React.FC = () => {
 
   const handleReferralSubmit = async (isSkip = false) => {
     if (!user) return;
-    let bonus = (!isSkip && refInput.length === 6) ? 300 : 0;
-    const updatedUser = { ...user, isNewUser: false, points: user.points + bonus, level: calculateLevel(user.points + bonus) };
+    let bonus = 0;
+    let referredByAddress = undefined;
+
+    if (!isSkip && refInput.length === 6) {
+      const referrer = await dbService.getUserByReferralCode(refInput);
+      if (referrer && referrer.walletAddress !== user.walletAddress) {
+        bonus = 300; // Sign-up bonus
+        referredByAddress = referrer.walletAddress;
+
+        // Update referrer stats
+        const updatedReferrer = {
+          ...referrer,
+          referralsCount: (referrer.referralsCount || 0) + 1,
+          points: (referrer.points || 0) + 100, // Small immediate bonus for inviter
+          gemPoints: (referrer.gemPoints || 0) + 100
+        };
+        await dbService.saveUser(updatedReferrer);
+      }
+    }
+
+    const updatedUser = {
+      ...user,
+      isNewUser: false,
+      referredBy: referredByAddress,
+      points: user.points + bonus,
+      level: calculateLevel(user.points + bonus)
+    };
     await dbService.saveUser(updatedUser);
     setUser(updatedUser);
     setShowReferralModal(false);
@@ -278,6 +329,7 @@ const AppContent: React.FC = () => {
           <Dashboard
             user={user}
             t={t}
+            lang={lang}
             onCheckIn={() => {
               const today = new Date().toISOString().split('T')[0];
               if (user.lastCheckIn === today) return;
@@ -301,6 +353,7 @@ const AppContent: React.FC = () => {
           <ChatBot
             isOpen={true}
             setIsOpen={() => { }}
+            user={user}
             lang={lang}
             t={t}
             updatePoints={updatePoints}
@@ -321,6 +374,7 @@ const AppContent: React.FC = () => {
               const newUser = { ...user, ...fields };
               setUser(newUser);
             }}
+            onOpenMysteryBox={() => setShowMysteryBox(true)}
           />
         )}
         {activeTab === 'lotto' && user && (
@@ -410,6 +464,24 @@ const AppContent: React.FC = () => {
         isOpen={showDonateModal}
         onClose={() => setShowDonateModal(false)}
       />
+
+      {user && (
+        <MysteryBoxModal
+          isOpen={showMysteryBox}
+          onClose={() => setShowMysteryBox(false)}
+          user={user}
+          onOpenBox={async (loot) => {
+            if (loot.type === 'points') {
+              updatePoints(loot.amount, 'Mystery Box Reward');
+            } else if (loot.type === 'tickets') {
+              const newCount = (user.dailyTicketCount || 0) + loot.amount;
+              const newUser = { ...user, dailyTicketCount: newCount };
+              setUser(newUser);
+              await dbService.saveUser(newUser);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

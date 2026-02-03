@@ -1,7 +1,7 @@
 
 export const translations = {
   en: {
-    appName: 'CARVFi',
+    appName: 'XFi',
     connectWallet: 'Connect Wallet',
     installExtension: 'Install Wallet Extension',
     disconnect: 'Disconnect',
@@ -60,7 +60,7 @@ export const translations = {
     pending: 'Pending Sync'
   },
   ar: {
-    appName: 'CARVFi',
+    appName: 'XFi',
     connectWallet: 'ربط المحفظة',
     installExtension: 'تثبيت إضافة المحفظة',
     disconnect: 'قطع الاتصال',
