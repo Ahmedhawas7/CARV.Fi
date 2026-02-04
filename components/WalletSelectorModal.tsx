@@ -1,139 +1,121 @@
 import React, { useState, useEffect } from 'react';
-import { useConnect, useAccount } from 'wagmi';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { ChainType } from '../services/web3Config';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useConnect } from 'wagmi';
+import { X, Shield, Cpu, ChevronRight, Zap } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 interface WalletOption {
     id: string;
     name: string;
     icon: string;
-    chain: ChainType;
     installed: boolean;
 }
 
 interface WalletSelectorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSelectWallet: (walletId: string, chain: ChainType) => void;
+    onSelectWallet: (walletId: string) => void;
 }
 
 const WalletSelectorModal: React.FC<WalletSelectorModalProps> = ({ isOpen, onClose, onSelectWallet }) => {
     const { connectors } = useConnect();
-    const { wallets: solanaWallets } = useWallet();
     const [availableWallets, setAvailableWallets] = useState<WalletOption[]>([]);
 
     useEffect(() => {
         if (!isOpen) return;
-
-        const wallets: WalletOption[] = [];
-
-        // Detect EVM wallets via Wagmi connectors
-        connectors.forEach((connector) => {
+        const wallets: WalletOption[] = connectors.map((connector) => {
             const name = connector.name;
-            let icon = '🔷';
+            let iconText = '🔷';
+            if (name.toLowerCase().includes('metamask')) iconText = '🦊';
+            else if (name.toLowerCase().includes('trust')) iconText = '🛡️';
+            else if (name.toLowerCase().includes('rainbow')) iconText = '🌈';
 
-            if (name.toLowerCase().includes('metamask')) {
-                icon = '🦊';
-            } else if (name.toLowerCase().includes('trust')) {
-                icon = '🛡️';
-            } else if (name.toLowerCase().includes('rainbow')) {
-                icon = '🌈';
-            }
-
-            wallets.push({
+            return {
                 id: connector.id,
                 name: connector.name,
-                icon,
-                chain: 'evm',
-                installed: true, // Wagmi handles detection
-            });
+                icon: iconText,
+                installed: true,
+            };
         });
-
-        // Detect Solana wallets
-        solanaWallets.forEach((wallet) => {
-            let icon = '🟣';
-            const name = wallet.adapter.name;
-
-            if (name.toLowerCase().includes('phantom')) {
-                icon = '👻';
-            } else if (name.toLowerCase().includes('backpack')) {
-                icon = '🎒';
-            }
-
-            wallets.push({
-                id: wallet.adapter.name,
-                name: wallet.adapter.name,
-                icon,
-                chain: 'solana',
-                installed: wallet.adapter.readyState === 'Installed',
-            });
-        });
-
         setAvailableWallets(wallets);
-    }, [isOpen, connectors, solanaWallets]);
-
-    if (!isOpen) return null;
+    }, [isOpen, connectors]);
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/90 backdrop-blur-lg animate-in fade-in duration-300">
-            <div className="glass-card p-8 rounded-[40px] max-w-md w-full space-y-6 border border-primary/30 shadow-2xl animate-in zoom-in duration-300">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-3xl font-black text-glow italic uppercase">Connect Wallet</h2>
-                    <button
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                        className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+                    />
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 40 }}
+                        className="hxfi-glass p-10 max-w-[480px] w-full relative z-10 border-white/5 space-y-8 shadow-[0_0_100px_rgba(0,0,0,0.8)]"
                     >
-                        ✕
-                    </button>
-                </div>
-
-                <p className="text-gray-400 text-sm">
-                    Select your wallet and network to continue
-                </p>
-
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {availableWallets.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            <p>No wallets detected</p>
-                            <p className="text-xs mt-2">Please install a wallet extension</p>
-                        </div>
-                    ) : (
-                        availableWallets.map((wallet) => (
-                            <button
-                                key={`${wallet.chain}-${wallet.id}`}
-                                onClick={() => {
-                                    if (wallet.installed) {
-                                        onSelectWallet(wallet.id, wallet.chain);
-                                    }
-                                }}
-                                disabled={!wallet.installed}
-                                className={`w-full p-4 rounded-2xl border transition-all flex items-center gap-4 ${wallet.installed
-                                        ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 cursor-pointer'
-                                        : 'bg-white/5 border-white/5 opacity-50 cursor-not-allowed'
-                                    }`}
-                            >
-                                <span className="text-3xl">{wallet.icon}</span>
-                                <div className="flex-1 text-left">
-                                    <div className="font-bold text-white">{wallet.name}</div>
-                                    <div className="text-xs text-gray-400">
-                                        {wallet.chain === 'evm' ? '🔵 Base Network' : '🟣 Solana'}
-                                    </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-hxfi-purple/10 border border-hxfi-purple/30 flex items-center justify-center">
+                                    <Cpu className="w-6 h-6 text-hxfi-purple-glow" />
                                 </div>
-                                {!wallet.installed && (
-                                    <span className="text-xs text-red-400">Not Installed</span>
-                                )}
+                                <div>
+                                    <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white hxfi-text-glow">Access Nexus</h2>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Secure Neural Activation</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onClose}
+                                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all border border-white/5"
+                            >
+                                <X className="w-5 h-5" />
                             </button>
-                        ))
-                    )}
-                </div>
+                        </div>
 
-                <div className="pt-4 border-t border-white/10">
-                    <p className="text-[10px] text-gray-600 text-center">
-                        By connecting, you agree to sign a message for authentication
-                    </p>
+                        <div className="p-4 bg-hxfi-purple/5 border border-hxfi-purple/20 rounded-2xl flex items-center gap-4">
+                            <Shield className="w-6 h-6 text-hxfi-purple-glow shrink-0" />
+                            <p className="text-white/50 text-[11px] font-medium leading-relaxed italic">
+                                Initialize an end-to-end encrypted neural link via your primary provider to authenticate with the HXFi protocol.
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            {availableWallets.map((wallet) => (
+                                <button
+                                    key={wallet.id}
+                                    onClick={() => onSelectWallet(wallet.id)}
+                                    className="group w-full p-5 bg-white/[0.02] border border-white/5 rounded-[1.5rem] hover:bg-hxfi-purple/10 hover:border-hxfi-purple/40 transition-all flex items-center gap-5 text-left relative overflow-hidden"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-hxfi-purple/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative z-10">
+                                        {wallet.icon}
+                                    </div>
+                                    <div className="flex-1 relative z-10">
+                                        <div className="font-black italic uppercase tracking-tighter text-lg text-white group-hover:text-hxfi-purple-glow transition-colors">{wallet.name}</div>
+                                        <div className="text-[9px] font-black italic uppercase tracking-[0.2em] text-white/20">Verified Protocol</div>
+                                    </div>
+                                    <ChevronRight className="w-6 h-6 text-white/10 group-hover:text-hxfi-purple-glow group-hover:translate-x-2 transition-all relative z-10" />
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="pt-4 flex items-center justify-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-hxfi-purple-glow animate-pulse" />
+                            <span className="text-[9px] font-black italic uppercase tracking-[0.5em] text-white/20">Awaiting Signal</span>
+                        </div>
+                    </motion.div>
                 </div>
-            </div>
-        </div>
+            )}
+        </AnimatePresence>
     );
 };
 

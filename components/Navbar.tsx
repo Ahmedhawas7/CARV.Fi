@@ -1,75 +1,113 @@
 import React from 'react';
-import { Language, User } from '../types';
-import { ChainType } from '../services/web3Config';
-import BalanceDisplay from './BalanceDisplay';
+import { motion } from 'framer-motion';
+import { LayoutDashboard, Zap, ShoppingBag, Trophy, Wallet, Globe } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-interface NavbarProps {
-  lang: Language;
-  setLang: (lang: Language) => void;
-  user: User;
-  onConnect: () => void;
-  onDisconnect: () => void;
-  currentChain: ChainType;
-  t: any;
-  onOpenPremium?: () => void;
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
-const Navbar: React.FC<NavbarProps> = ({
-  lang,
-  setLang,
-  user,
-  onConnect,
-  onDisconnect,
-  currentChain,
-  t,
-  onOpenPremium
-}) => {
+interface NavItemProps {
+  icon: React.ElementType;
+  label: string;
+  isActive?: boolean;
+  onClick: () => void;
+}
+
+const NavItem = ({ icon: Icon, label, isActive, onClick }: NavItemProps) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "relative flex items-center gap-2.5 px-6 py-3 rounded-2xl transition-all duration-500 group",
+      isActive
+        ? "text-hxfi-purple-glow"
+        : "text-white/40 hover:text-white"
+    )}
+  >
+    {isActive && (
+      <motion.div
+        layoutId="hxfi-nav-bg"
+        className="absolute inset-0 bg-hxfi-purple/10 rounded-2xl border border-hxfi-purple/20 shadow-hxfi-glow"
+        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+      />
+    )}
+    <Icon className={cn("w-5 h-5 relative z-10 transition-transform group-hover:scale-110", isActive && "drop-shadow-[0_0_8px_rgba(167,139,250,0.6)]")} />
+    <span className="font-bold italic uppercase tracking-tighter text-sm relative z-10 hidden lg:block font-hud">{label}</span>
+  </button>
+);
+
+interface NavbarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  walletAddress: string | null;
+  onConnect: () => void;
+  lang: string;
+  setLang: (lang: any) => void;
+}
+
+const Navbar = ({ activeTab, setActiveTab, walletAddress, onConnect, lang, setLang }: NavbarProps) => {
   return (
-    <nav className="glass-card sticky top-0 z-50 border-b border-white/10 py-4 bg-black/40 backdrop-blur-xl">
-      <div className="container mx-auto px-4 flex items-center justify-between">
+    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-6 font-sans">
+      <div className="max-w-[1400px] mx-auto flex items-center justify-between px-8 py-4 hxfi-glass border-white/5 bg-black/20 backdrop-blur-3xl shadow-2xl">
         <div className="flex items-center gap-4">
-          <div className="gradient-bg p-2 rounded-xl shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-            <span className="text-2xl">🎲</span>
+          <div className="w-12 h-12 bg-hxfi-gradient rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.4)] relative group overflow-hidden">
+            <Zap className="text-white w-7 h-7 relative z-10 group-hover:scale-125 transition-transform" />
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent"
+            />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-glow hidden sm:block italic">{t.appName}</h1>
+          <div className="flex flex-col -space-y-1">
+            <span className="text-2xl font-bold italic tracking-tighter hxfi-text-glow leading-none font-hud">
+              HXFi
+            </span>
+            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-hxfi-purple-glow ml-0.5 font-sans">
+              Protocol
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-6">
-          {/* Chain Badge */}
-          <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${currentChain === 'evm'
-            ? 'border-blue-500 text-blue-400 bg-blue-500/10'
-            : 'border-purple-500 text-purple-400 bg-purple-500/10'
-            }`}>
-            {currentChain === 'evm' ? '🔵 BASE' : '🟣 SOLANA'}
-          </div>
+        <div className="hidden md:flex items-center gap-2 bg-white/[0.02] p-1.5 rounded-[1.5rem] border border-white/5">
+          <NavItem
+            icon={LayoutDashboard}
+            label="Nexus"
+            isActive={activeTab === 'dashboard'}
+            onClick={() => setActiveTab('dashboard')}
+          />
+          <NavItem
+            icon={Trophy}
+            label="Missions"
+            isActive={activeTab === 'tasks'}
+            onClick={() => setActiveTab('tasks')}
+          />
+          <NavItem
+            icon={ShoppingBag}
+            label="Armory"
+            isActive={activeTab === 'store'}
+            onClick={() => setActiveTab('store')}
+          />
+        </div>
 
-          {/* Balance Display */}
-          {user.walletAddress && (
-            <BalanceDisplay chain={currentChain} userLevel={user.level} gemPoints={user.gemPoints} />
-          )}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+            className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all border border-white/5 group"
+          >
+            <Globe className="w-5 h-5 text-white/40 group-hover:text-hxfi-purple-glow transition-colors" />
+          </button>
 
-          {/* Wallet Address & Disconnect */}
-          {user.walletAddress ? (
-            <div className="flex items-center gap-2">
-              <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-mono text-gray-300">
-                {user.walletAddress.slice(0, 4)}...{user.walletAddress.slice(-4)}
-              </div>
-              <button
-                onClick={onDisconnect}
-                className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors"
-                title="Disconnect"
-              >
-                ⏻
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onConnect}
-              className="gradient-bg px-6 py-2 rounded-xl font-bold hover:opacity-90 transition-opacity whitespace-nowrap shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-            >
-              {t.connectWallet}
-            </button>
-          )}
+          <button
+            onClick={onConnect}
+            className="flex items-center gap-3 px-6 py-3 bg-white/[0.03] border border-hxfi-purple/30 rounded-2xl hover:bg-hxfi-purple/10 transition-all group overflow-hidden relative"
+          >
+            <div className="absolute inset-0 bg-hxfi-purple/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <Wallet className="w-5 h-5 text-hxfi-purple-glow relative z-10 group-hover:rotate-12 transition-transform" />
+            <span className="text-xs font-black italic uppercase tracking-tighter relative z-10">
+              {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Initialize Link"}
+            </span>
+          </button>
         </div>
       </div>
     </nav>
