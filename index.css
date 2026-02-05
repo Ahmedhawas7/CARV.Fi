@@ -1,28 +1,5 @@
 @import "tailwindcss";
 
-@theme {
-  --color-background: #040406;
-  --color-hxfi-purple: #7C3AED;
-  --color-hxfi-purple-deep: #4C1D95;
-  --color-hxfi-purple-glow: #A78BFA;
-  --color-hxfi-indigo: #1E1B4B;
-  --color-hxfi-gold: #FBBF24;
-  --color-hxfi-green: #10B981;
-  
-  --font-sans: 'Outfit', sans-serif;
-  --font-hud: 'Rajdhani', sans-serif;
-  
-  --shadow-hxfi-glow: 0 0 20px rgba(124, 58, 237, 0.3);
-  --shadow-hxfi-gold-glow: 0 0 15px rgba(251, 191, 36, 0.4);
-  
-  --animate-scanline: scanline 8s linear infinite;
-  
-  @keyframes scanline {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(100vh); }
-  }
-}
-
 @layer base {
   body {
     @apply bg-background text-white font-sans antialiased min-h-screen selection:bg-hxfi-purple/30 overflow-x-hidden;
@@ -38,7 +15,7 @@
   }
 
   .hxfi-card {
-    @apply bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2rem] p-6 hover:bg-white/[0.06] transition-all duration-500 hover:border-hxfi-purple/40;
+    @apply hxfi-glass p-6 hover:bg-white/[0.06] transition-all duration-500 hover:border-hxfi-purple/40;
   }
 
   .hxfi-text-glow {
