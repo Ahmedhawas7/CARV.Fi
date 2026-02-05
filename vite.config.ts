@@ -47,13 +47,8 @@ export default defineConfig(({ mode }) => {
 
             // Wallets & Web3
             wallets: [
-              '@solana/wallet-adapter-react',
-              '@solana/wallet-adapter-wallets',
               '@rainbow-me/rainbowkit',
             ],
-
-            // Solana core
-            solana: ['@solana/web3.js'],
 
             // EVM core
             evm: ['viem', 'wagmi'],

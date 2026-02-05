@@ -33,6 +33,9 @@ import { WagmiProvider, useAccount, useSignMessage, useConnect, useDisconnect } 
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { config } from './services/web3Config';
 
+// Vercel Analytics
+import { Analytics } from '@vercel/analytics/react';
+
 const queryClient = new QueryClient();
 
 const AppContent: React.FC = () => {
@@ -340,6 +343,7 @@ const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
           <AppContent />
+          <Analytics />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
